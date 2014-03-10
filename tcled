@@ -1,0 +1,1803 @@
+#! /usr/bin/env tclsh
+
+set ABOUT {
+tcledit: a linux console based editor in pure tcl
+
+2001-05-30 Original code by Steve Redler IV
+2006-06-23 Modified by Adly Abdulah
+}
+
+################################
+# Preferences:
+################################
+# How many spaces each tab character takes:
+set tabstop 4
+# Substitute spaces to tabs on newline and pasting:
+set usetabs true
+# Search is case sensitive:
+set searchcase false
+
+################################
+# Syntax hilighting:
+################################
+array set bg {
+	black 40 red 41 green 42 yellow 43
+	blue 44 magenta 45 cyan 46 white 47
+}
+array set fg {
+	black 30 red 31 green 32 yellow 33
+	blue 34 magenta 35 cyan 36 white 37
+}
+array set style {
+	none 0 bright 1 dim 2
+	underline 4 blink 5 reverse 7
+}
+
+# RE for strings and numbers:
+set STRINGS {{("(?:[^\"]*?[^\\])??")|('(?:[^']*?[^\\])??')}}
+set NUMBERS {{\y(0x[0-9a-fA-F]+|[0-9][0-9\.]*)\y}}
+
+set COMMENT_FORMAT {$fg(green)}
+
+set syntaxRules {
+	# The syntax rules is in the form:
+	# {filepattern} {{regexp} {formatting}...}
+	# Comments in here are ignored.
+
+	{^(po|pot)$} {
+	  {#:.+$} {$style(underline)}
+	  {#,\s*fuzzy.*$} {$fg(yellow);$bg(red);$style(bright)}
+	  {msgid|msgstr} {$bg(cyan);$fg(black)}
+	  $STRINGS {}
+	  $NUMBERS {}
+	}
+
+	# C and js comments
+	{^(c|cc|cpp|h|hh|js)$} {
+	  # Comments:
+	  {(?:^|[^\\])//.*$} $COMMENT_FORMAT
+	  
+	  # Fake /* .. */ style comments:
+	  {/\*.*?\*/} $COMMENT_FORMAT
+	  # /* ...
+	  {/\*.*(?!\*/).*$} $COMMENT_FORMAT
+	  # * ...
+	  {^\s*\*.*$} {$fg(green)}
+	  # ... */
+	  {^[^(?!/\*)]*\*/} $COMMENT_FORMAT
+	}
+
+	# C
+	{^(c|cc|cpp|h|hh)$} {
+	  # Preprocess:
+	  {(?:^|;)\s*#.*$} {$fg(yellow)}
+	  
+	  # Traditional constants:
+	  {\y([A-Z_][A-Z0-9_]+)\y} {$style(bright)}
+	  
+	  # Types:
+	  {\y(volatile|void|const|struct|signed|unsigned|register|union)\y}
+		{$style(bright);$fg(cyan)}
+	  {\y(bool|char|short|int|long|double|float|enum|bit|static)\y}
+		{$style(bright);$fg(cyan)}
+	  
+	  # Keywords:
+	  {\y(auto|break|case|case:|continue|default|do|else|extern)\y}
+		{$fg(cyan)}
+	  {\y(for|goto|if|return|switch|typedef|while)\y}
+		{$fg(cyan)}
+		
+	  # PIC specific, I/O:
+	  {\y(?:PORT|TRIS)[A-Z]\y} {$style(bright);$fg(red)}
+	  {\yTRIS[A-Z][0-8]\y} {$style(bright);$fg(red)}
+	  {\yR[A-Z][0-8]\y} {$style(bright);$fg(red)}
+	}
+
+	# js
+	{js$|\ynode\y} {
+	  # Keywords:
+	  {\y(break|case|catch|continue|default|delete|do|else|finally|for)\y}
+		{$style(bright);$fg(cyan)}
+	  {\y(function|if|in|instanceof|new|return|switch|this|throw|try)\y}
+		{$style(bright);$fg(cyan)}
+	  {\y(typeof|var|void|while|with)\y}
+		{$style(bright);$fg(cyan)}
+	  
+	  # Reserved words:
+	  {\y(abstract|boolean|byte|char|class|const|debugger|double|enum)\y}
+		{$fg(red)}
+	  {\y(export|extends|final|float|goto|implements|import|int|long)\y}
+		{$fg(red)}
+	  {\y(interface|native|package|private|protected|public|short|static)\y}
+		{$fg(red)}
+	  {\y(super|synchronized|throws|transient|volatile)\y}
+		{$fg(red)}
+		
+	  # Syntax elements:
+	  {[{}\[\]():;,]} {$style(dim)}
+	}
+
+	# Makefile:
+	{(?i)^makefile$} {
+	  # Targets:
+	  {^\s*[^=:]+:} {$style(bright);$fg(white);$bg(blue)}
+	  
+	  # Variables:
+	  {\$\(\S+\)} {$style(bright);$fg(cyan)}
+	  {^\s*(\S+)\s*=} {$fg(cyan)}
+	}
+
+	# Special empty filepattern matches all files:
+	{} {
+	  # Strings & numbers:
+	  $STRINGS {$style(bright);$fg(magenta)}
+	  $NUMBERS {$style(bright);$fg(magenta)}
+
+	  # File magics:
+	  {^#!.*$} {$style(bright);$fg(green);$bg(blue)}
+	  {^package\s+.*$} {$style(bright);$fg(green);$bg(blue)}
+
+	  # Script comments/C preprocessing
+	  {(?:^|;)\s*#.*$} $COMMENT_FORMAT
+
+	  # Email address:
+	  {(?i)(?:[a-z0-9-]+\.\:)*[a-z0-9-]+\@(?:[a-z0-9-]+\.)*[a-z0-9-]+}
+		{$style(bright)}
+	}
+
+	# Spec file:
+	{spec|dist} {
+	  {^\w+:} {$fg(yellow)}
+	  {^%(?:desc|pre|build|install|clean|files|post|changelog)\w*}
+	  {$bg(cyan);$fg(black)}
+	}
+
+	{\y(tcl|tm|tclsh|wish)\y} {
+	  # dictobject syntax
+	  {(?i)(?:\%[a-z_\:][\w:]*)(\.[\w\:\.]*)} {$fg(yellow)}
+	  
+	  # Tcl variable names after a command:
+	  {(?:set|append|incr|variable)\s+([a-zA-Z_\.]\w*)} {$fg(cyan)}
+	  {(?:global) ([a-zA-Z_\.][\w ]*)} {$fg(cyan)}
+
+	  # Functions, procs and subroutines:
+	  {(?:proc|sub|function|rename)\s+([a-zA-Z_\.\|]\w*)} {$style(bright)}
+	  {([a-zA-Z_\.]\w*)(?:\s*\()} {$style(bright)}
+	}
+
+	# Scripts
+	{\y(sh|perl|cgi|pm|pl|py|spec|tcl|tm|tclsh|wish)\y} {
+	  # Script style variables:
+	  {(?i)\$[a-z_\.\:][\w\:]*} {$style(bright);$fg(cyan)}
+	  {(?i)[\@\%][a-z_\.\:][\w\:]*} {$style(bright);$fg(yellow)}
+	}
+	{\y(sh|perl|cgi|pm|pl|py|spec|bash)\y} {
+	  # Backtick exec:
+	  {`.*?`} {$bg(yellow);$fg(black)}
+	}
+
+	# Perl:
+	{perl|ps|pm|awk} {
+	  {'.*?'} {$fg(magenta)}
+	  {(?:s|tr)(/(?:.*?[^\\])??)/(?:.*?[^\\])??/} {$bg(green);$fg(black)}
+	  {(?:s|tr)/(?:.*?[^\\])??(/(?:.*?[^\\])??/)} {$bg(white);$fg(black)}
+	}
+	# Regexp literal:
+	{\y(perl|ps|pm|awk|js|node)\y} {
+	  {/(?:.*?[^\\])??/} {$bg(yellow);$fg(black)}
+	}
+
+	# Patch file:
+	{patch|diff} {
+	  {^(?:\-\-\-|\+\+\+) .*$} {$bg(blue);$fg(white)}
+	  {^\@\@.*$} {$bg(yellow);$fg(black)}
+	  {^(?:\+|>).*$} {$bg(green);$fg(black)}
+	  {^(?:\-|<).*$} {$bg(red);$fg(black)}
+	  {^(diff.*)} {$bg(blue);$fg(white);$style(bright)}
+	}
+
+	# HTML:
+	{htm|xml|svg} {
+	  {<!DOCTYPE.*?>} {$bg(blue);$fg(yellow)}
+	  {<!-.*?->} $COMMENT_FORMAT
+	  {<.*?>} {$style(bright);$fg(cyan)}
+	}
+
+	{^asn$} {
+	  {^\s*--.*$} $COMMENT_FORMAT
+	  {^\s*(\w+)\s.*::=} {$fg(yellow)}
+	}
+}
+
+################################
+# Globals
+################################
+set filename ""
+set fileext ""
+set searchpattern ""
+set searchhistory ""
+set gotohistory ""
+set statusmessage ""
+set modified 0
+set viewRow 1
+set viewCol 1
+set bufRow 0
+set bufCol 0
+set undoBuffer ""
+set redoBuffer ""
+set writable 1
+set autoCompleteMatches ""
+set tabCompleteWord ""
+set comeFrom ""
+
+###############################
+# Backport lassign if < 8.5
+###############################
+if {[info commands lassign] == ""} {
+	proc lassign {theList args} {
+		foreach var $args val $theList {
+			upvar 1 $var Var
+			set Var $val
+		}
+	}
+}
+
+################################
+# Utilities
+################################
+proc shift {ls} {
+	upvar 1 $ls LIST
+	set ret [lindex $LIST 0]
+	set LIST [lrange $LIST 1 end]
+	return $ret
+}
+
+proc readbuf {txt} {
+	upvar 1 $txt STRING
+
+	set ret [string index $STRING 0]
+	set STRING [string range $STRING 1 end]
+	if {$STRING == ""} {
+		append STRING [read stdin]
+	}
+	return $ret
+}
+
+proc endLine {} {
+	global BUFFER bufRow bufCol
+	set x [string length [lindex $BUFFER $bufRow]]
+	if {$bufCol > $x} {
+		set bufCol $x
+	}
+}
+
+proc getSpaces {line} {
+	global tabstop usetabs
+	set ret [lindex [regexp -inline {^[[:space:]]+} $line] 0]
+	if {$usetabs} {
+		string map [list [string repeat " " $tabstop] "\t"] $ret
+	} else {
+		set ret
+	}
+}
+
+proc inputStat {txt ret} {
+	global IDX
+	set stat [string range "$txt $ret" 0 [expr {$IDX(ROWCOL)-1}]]
+	set len [expr [string length $stat]+1]
+	status $stat
+	goto end $len
+	flush stdout
+}
+
+proc historyAppend {thelist item} {
+	upvar 1 $thelist hist
+
+	if {[set hidx [lsearch -exact $hist $item]] != -1} {
+		set hist [lreplace $hist $hidx $hidx]
+	}
+	lappend hist $item
+}
+
+proc getInput {buffer {txt ""} {historybuffer ""}} {
+	global viewRow viewCol
+
+	upvar 1 $buffer keybuffer
+	if {$historybuffer != ""} {
+		upvar 1 $historybuffer hist
+		set hidx -1
+	}
+
+	status ""
+	goto end 1
+	puts -nonewline "\033\[7m$txt "
+	flush stdout
+	set ret ""
+	while {[set ch [readbuf keybuffer]] != "\n" && $ch != "\r"} {
+		if {$ch == ""} {
+			after 40
+			continue
+		}
+		if {$ch == "\u0003"} {
+			doExit
+		} elseif {$ch == "\u001b"} {
+			# attempt to get all escape characters
+			# on slow connections/terminals:
+			after 10
+			append keybuffer [read stdin]
+
+			# escape:
+			if {$keybuffer == ""} {
+			status ""
+			return
+			}
+
+			# handle history if given
+			if {$historybuffer != ""} {
+				if {$keybuffer == "\[A"} {
+					if {$hidx < ([llength $hist]-1)} {
+						incr hidx
+					}
+				} elseif {$keybuffer == "\[B"} {
+					if {$hidx >= 0} {
+						incr hidx -1
+					}
+				}
+				if {$hidx >= 0} {
+					set ret [lindex $hist end-$hidx]
+				} else {
+					set ret ""
+				}
+				inputStat $txt $ret
+			}
+
+			# need to ignore escapes sequences:
+			while {[set ch [readbuf keybuffer]] != "~"
+			&& $keybuffer != ""} {}
+			continue
+		} elseif {$ch == "\u007f" || $ch == "\u0008"} {
+		# handle backspace:
+		set ret [string range $ret 0 end-1]
+		} elseif {[string is print $ch]} {
+			append ret $ch
+		}
+		inputStat $txt $ret
+	}
+	return $ret
+}
+
+proc getCol {row bCol} {
+	global BUFFER tabstop
+
+	set col 0
+	set i 0
+	foreach c [split [lindex $BUFFER $row] ""] {
+		if {$i >= $bCol} break
+		if {$c == "\t"} {
+			# align to tabs:
+			incr col [expr {$tabstop-$col%$tabstop}]
+		} else {
+			incr col
+		}
+		incr i
+	}
+	incr col
+}
+
+proc status {{txt "\0"}} {
+	global IDX statusmessage
+
+	if {$txt != "\0"} {
+		set statusmessage $txt
+	}
+
+	set len $IDX(ROWCOL)
+	set str [format "%-${len}.${len}s" $statusmessage]
+	puts -nonewline "\033\[7m\u001b\[$IDX(ROWMAX);00H$str\033\[0m"
+	goto cursor
+	#flush stdout
+}
+
+proc idx {row col} {
+	global IDX BUFFER
+	set c $IDX(ROWCOL)
+	set r $IDX(ROWMAX)
+
+	set str [format " L:%-9s C:%-4d\033\[0m" "$row/[llength $BUFFER]" $col]
+	set str [string range $str 0 [expr {$IDX(ROWCOLLEN)-1}]]
+
+	# 80th column marker:
+	if {$c > 80} {
+		puts -nonewline "\033\[7m\u001b\[${r};80H|"
+	}
+	puts -nonewline "\033\[7m\u001b\[${r};${c}H${str}\033\[0m"
+}
+
+proc goto {row {col 1}} {
+	puts -nonewline [doGoto $row $col]
+}
+proc doGoto {row {col 1}} {
+	global IDX viewRow viewCol
+
+	switch -- $row {
+		"home" {set row 1}
+		"cursor" {
+			set row $viewRow
+			set col $viewCol
+		}
+	}
+
+	if {$row == "end"} {
+		set row $IDX(ROWMAX)
+	}
+	return "\u001b\[${row};${col}H"
+}
+
+proc clear {} {
+	puts -nonewline "\u001b\[2J"
+	flush stdout
+}
+
+proc clearline {} {
+	return "\u001b\[2K"
+}
+
+proc stripComments {data} {
+	set ret ""
+	foreach x [split $data "\n"] {
+		set x [string trim $x]
+		if {[string index $x 0] != "#"} {
+			append ret "$x\n"
+		}
+	}
+	return $ret
+}
+
+proc currentFragment {{mode range}} {
+	global BUFFER bufRow bufCol
+
+	set line [lindex $BUFFER $bufRow]
+	set idx [expr {$bufCol-1}]
+	set s [string wordstart $line $idx]
+	switch -- $mode {
+		"range"  {return [list $s [expr {$bufCol-1}]]}
+		"start"  {return $s}
+		"end"    {return [expr {$bufCol-1}]}
+		"string" {return [string range $line $s [expr {$bufCol-1}]]}
+	}
+}
+
+proc currentWord {{mode range}} {
+	global BUFFER bufRow bufCol
+
+	set line [lindex $BUFFER $bufRow]
+	set idx [expr {$bufCol-1}]
+	set s [string wordstart $line $idx]
+	set n [string wordend $line $idx]
+	switch -- $mode {
+		"range"  {return [list $s [expr {$n-1}]]}
+		"start"  {return $s}
+		"end"    {return [expr {$n-1}]}
+		"string" {return [string range $line $s [expr {$n-1}]]}
+	}
+}
+
+################################
+# Autocomplete
+################################
+proc scanAutoComplete {word} {
+	global BUFFER autoCompleteMatches IDX
+
+	set autoCompleteMatches ""
+	if {$word != ""} {
+		foreach line $BUFFER {
+			foreach x [
+				regexp -inline -all "\\y$word\\w+" $line
+			] {
+				lappend autoCompleteMatches $x
+			}
+		}
+		set autoCompleteMatches [lsort -unique $autoCompleteMatches]
+	}
+
+	autoCompleteStatus
+}
+
+proc autoCompleteStatus {} {
+	global autoCompleteMatches IDX
+
+	if {[llength $autoCompleteMatches]} {
+		set stat ""
+		foreach n {1 2 3 4 5 6} m $autoCompleteMatches {
+			if {[expr {
+				([string length $stat]+[string length $m]+3) >
+				$IDX(ROWCOL)
+			}]} break
+
+			if {$n != "" && $m != ""} {
+				append stat "${n}:$m "
+			}
+		}
+		status $stat
+	} else {
+		status ""
+	}
+}
+
+proc substAutoComplete {{select 0}} {
+	global BUFFER bufRow bufCol autoCompleteMatches
+
+	if {[llength $autoCompleteMatches]} {
+		set line [lindex $BUFFER $bufRow]
+
+		set s [currentWord start]
+		set n [currentWord end]
+
+		set replacement [lindex $autoCompleteMatches $select]
+		set line [string replace $line $s $n $replacement]
+
+		registerUndo D $bufRow [expr {$n+1}] [string range $line $s $n]
+
+		set BUFFER [lreplace $BUFFER $bufRow $bufRow $line]
+
+		set bufCol [expr {$s+[string length $replacement]}]
+
+		registerUndo I $bufRow $s $bufRow $bufCol
+
+		set autoCompleteMatches [lreplace $autoCompleteMatches $select $select]
+		lappend autoCompleteMatches $replacement
+	}
+}
+
+################################
+# Command handlers
+################################
+proc handleDelete {dir} {
+	global BUFFER bufRow bufCol viewRow
+	global undoBuffer redoBuffer writable
+	if {!$writable} return
+	upvar 1 line line
+
+	set line [lindex $BUFFER $bufRow]
+
+	if {$dir == "-"} {
+		if {$bufCol == 0 && $bufRow > 0} {
+			set upRow [expr {$bufRow-1}]
+			set line [lindex $BUFFER $upRow]
+			set bufCol [string length $line]
+			append line [lindex $BUFFER $bufRow]
+			set BUFFER [lreplace $BUFFER $upRow $bufRow $line]
+			incr viewRow -1
+			set bufRow $upRow
+
+			registerUndo D $bufRow $bufCol "\n"
+
+			handleRedraw partial
+			return
+		}
+		incr bufCol -1
+	} else {
+		if {$bufCol == [string length $line] && $bufRow < [llength $BUFFER]} {
+			set downRow [expr {$bufRow+1}]
+			append line [lindex $BUFFER $downRow]
+			set BUFFER [lreplace $BUFFER $bufRow $downRow $line]
+
+			registerUndo D $bufRow $bufCol "\n"
+
+			handleRedraw partial
+			return
+		}
+	}
+
+	registerUndo D $bufRow $bufCol [string index $line $bufCol]
+
+	set line [string replace $line $bufCol $bufCol]
+	set BUFFER [lreplace $BUFFER $bufRow $bufRow $line]
+	handleRedraw edit
+	return
+}
+
+proc syntaxHilight {line start {charmap ""}} {
+	global hilight IDX
+
+	set tabmap "\t"
+	if {$charmap != ""} {
+		set tabmap $charmap
+	}
+
+	set matches ""
+	set end [expr {$start+$IDX(COLMAX)-1}]
+	foreach {pattern color} $hilight {
+		set ps 0
+		set pn 0
+		foreach m [regexp -inline -all -indices -- $pattern $line] {
+			foreach {s n} $m break
+			lappend m $color
+			if {$s <= $pn && $s >= $ps && $n <= $pn} {
+				set matches [lreplace $matches end end $m]
+			} else {
+				lappend matches $m
+			}
+			set ps $s
+			set pn $n
+		}
+	}
+
+	set oldline [string range $line $start $end]
+	set line {}
+	set prev 0
+	foreach m [lsort -integer -index 0 $matches] {
+		foreach {s n color} $m break
+		if {$s < $start} {
+			set s 0
+		} else {
+			set s [expr {$s-$start}]
+		}
+		set n [expr {$n-$start}]
+		if {$n > $end} {set n $end}
+
+		if {$s < $prev} continue
+		append line [string range $oldline $prev [expr {$s-1}]]
+		set prev [expr {$n+1}]
+		append line "\033\[${color}m"
+		append line [string range $oldline $s $n]
+		if {$n != $end} {
+			append line "\033\[0m"
+		}
+	}
+	append line [string range $oldline $prev end]
+	append line "\033\[0m"
+
+	return $line
+}
+
+proc handleSearch {} {
+	global searchpattern searchcase
+	global BUFFER IDX viewRow bufRow bufCol
+
+	if {$searchpattern != ""} {
+		status "Search: $searchpattern"
+
+		if {!$searchcase} {
+			# Add (?i) to make search case insensitive:
+
+			set n [regexp -inline -indices \
+				{^\(\?[bceimnpqstwx]+?\)} $searchpattern]
+			if {$n == ""} {
+				set pattern "(?i)$searchpattern"
+			} else {
+				set n [lindex [lindex $n 0] 1]
+				set opt [string range $searchpattern 2 [expr {$n-1}]]
+				if {[regexp {i|c} $opt] == 0} {
+					append opt i
+				}
+				set pattern "(?$opt)"
+				append pattern [string range $searchpattern [expr {$n+1}] end]
+			}
+		} else {
+			set pattern $searchpattern
+		}
+
+		if {[catch {lsearch -regexp [lrange $BUFFER \
+		[expr {$bufRow+1}] end] $pattern} found]} {
+			# Regexp error:
+			status "regexp error: [lindex [split $found :] 1]"
+		} else {
+			set startRow $bufRow
+			if {$found == -1} {
+				set found [lsearch -regexp $BUFFER $pattern]
+				if {$found != -1} {
+					set bufRow $found
+				}
+			} else {
+				incr bufRow $found
+				incr bufRow
+			}
+			if {$found != -1} {
+				set rowDiff [expr {$bufRow-$startRow}]
+				incr viewRow $rowDiff
+				if {$viewRow < 0 || $viewRow > $IDX(ROWMAX)} {
+					set viewRow 5
+				}
+
+				set C [regexp -indices -inline -- $pattern \
+				[lindex $BUFFER $bufRow]]
+				set bufCol [lindex [lindex $C 0] 0]
+				if {$bufRow < $viewRow} {
+					set viewRow 0
+				}
+			} else {
+				status "Search: $searchpattern (not found!)"
+			}
+		}
+	}
+	handleRedraw
+}
+
+proc handleNewline {} {
+	global BUFFER viewRow bufRow bufCol
+	global undoBuffer redoBuffer writable
+	if {!$writable} return
+	upvar 1 keybuffer keybuffer
+
+	# The getSpaces is for auto-indenting:
+	set line [lindex $BUFFER $bufRow]
+	set newline [getSpaces $line]
+
+	set currline [string range $line 0 [expr {$bufCol - 1}]]
+	set line [string range $line $bufCol end]
+	set BUFFER [lreplace $BUFFER $bufRow $bufRow $currline]
+
+	set row $bufRow
+	incr bufRow
+	set col $bufCol
+
+	if {$keybuffer == "" && [regexp {^\s} $line] == 0} {
+		set len [string length $newline]
+		append newline $line
+		set bufCol $len
+	} else {
+		set newline $line
+		set bufCol 0
+	}
+	set BUFFER [linsert $BUFFER $bufRow $newline]
+
+	registerUndo I $row $col $bufRow $bufCol
+
+	handleRedraw partial
+	incr viewRow
+}
+
+proc handleInsert {} {
+	global BUFFER bufRow bufCol viewRow tabCompleteWord
+	global undoBuffer redoBuffer writable
+	if {!$writable} return
+	upvar 1 printbuffer printbuffer
+
+	set line [lindex $BUFFER $bufRow]
+	if {$printbuffer == "\t"} {
+		# Tab completion:
+		if {$tabCompleteWord == ""} {
+			set tabCompleteWord [currentFragment string]
+			if {[regexp {\w+} $tabCompleteWord tabCompleteWord]} {
+				scanAutoComplete $tabCompleteWord
+			} else {
+				set tabCompleteWord ""
+			}
+		}
+		if {$tabCompleteWord != ""} {
+			substAutoComplete
+			autoCompleteStatus
+			return
+		}
+	} else {
+		set tabCompleteWord ""
+	}
+	set oldline $line
+	set line [string range $oldline 0 [expr {$bufCol-1}]]
+	append line [getSpaces $printbuffer]
+	append line [string trimleft $printbuffer]
+	append line [string range $oldline $bufCol end]
+	set BUFFER [lreplace $BUFFER $bufRow $bufRow $line]
+	set len [string length $printbuffer]
+	set col $bufCol
+	incr bufCol $len
+
+	set fragment [currentFragment string]
+	if {[regexp {\w+} $fragment fragment]} {
+		scanAutoComplete $fragment
+	}
+
+	registerUndo I $bufRow $col $bufRow $bufCol
+}
+
+proc undo {cmd sRow sCol args} {
+	global BUFFER IDX bufRow bufCol viewRow
+
+	set bufRow $sRow
+	set bufCol $sCol
+	set oldline [lindex $BUFFER $sRow]
+	set line [string range $oldline 0 [expr $bufCol - 1]]
+	set ret ""
+
+	switch -exact -- $cmd {
+		"D" {
+			set txt [lindex $args 0]
+			set txt [split $txt "\n"]
+			set endline [string range $oldline $bufCol end]
+
+			set line "$line[lindex $txt 0]"
+			if {[llength $txt] > 1} {
+				set BUFFER [lreplace $BUFFER $bufRow $bufRow $line]
+				foreach x [lrange $txt 1 end-1] {
+					incr bufRow
+					set BUFFER [linsert $BUFFER $bufRow $x]
+				}
+				incr bufRow
+				set last [lindex $txt end]
+				set endline "$last$endline"
+				set BUFFER [linsert $BUFFER $bufRow $endline]
+				set len [string length $last]
+				set bufCol $len
+			} else {
+				append line [string range $oldline $bufCol end]
+				set BUFFER [lreplace $BUFFER $bufRow $bufRow $line]
+				set len [string length [lindex $txt 0]]
+				incr bufCol $len
+			}
+			set ret [list I $sRow $sCol $bufRow $bufCol]
+		}
+		"I" {
+			foreach {nRow nCol} $args break
+			set endline [lindex $BUFFER $nRow]
+
+			if {$sRow == $nRow} {
+				set deleted [string range $oldline $sCol [expr {$nCol-1}]]
+			} else {
+				set deleted [string range $oldline $sCol end]
+				for {set x [expr {$sRow+1}]} {$x < $nRow} {incr x} {
+					append deleted "\n"
+					append deleted [lindex $BUFFER $x]
+				}
+				append deleted "\n"
+				append deleted [string range $endline 0 [expr {$nCol-1}]]
+			}
+
+			append line [string range $endline $nCol end]
+			set BUFFER [lreplace $BUFFER $sRow $nRow $line]
+			set ret [list D $sRow $sCol $deleted]
+		}
+	}
+
+	if {$bufRow < $IDX(COLMAX)} {
+		set viewRow [expr {$bufRow+1}]
+	}
+	set IDX(ROWLAST) -1 ;# force redraw
+	handleRedraw
+	return $ret
+}
+
+proc handleUndo {from to} {
+	global undoBuffer redoBuffer
+	if {[llength [set $from]] > 0} {
+		set op [lindex [set $from] end]
+		set $from [lreplace [set $from] end end]
+		lappend $to [eval "undo $op"]
+		status ""
+	} else {
+		status "$from empty."
+		flush stdout
+	}
+}
+
+proc registerUndo {type args} {
+	global undoBuffer redoBuffer
+	set last [lindex $undoBuffer end]
+	set lastarg [lrange $last 1 end]
+	set last [lindex $last 0]
+
+	set redoBuffer ""
+
+	switch -exact -- $type {
+		"I" {
+			foreach {sRow sCol nRow nCol} $args break
+			if {$last == $type} {
+				foreach {lsRow lsCol lnRow lnCol} $lastarg break
+				if {$sRow == $lnRow && $sCol == $lnCol} {
+					set sRow $lsRow
+					set sCol $lsCol
+					set undoBuffer [lreplace $undoBuffer end end]
+				}
+			}
+			lappend undoBuffer [list $type $sRow $sCol $nRow $nCol]
+		}
+		"D" {
+			foreach {sRow sCol txt} $args break
+			if {$last == $type} {
+				foreach {lsRow lsCol ltxt} $lastarg break
+				if {$sRow == $lsRow} {
+					if {$sCol == $lsCol} {
+						set txt "$ltxt$txt"
+						set undoBuffer [lreplace $undoBuffer end end]
+					} elseif {$sCol+1 == $lsCol} {
+						append txt $ltxt
+						set undoBuffer [lreplace $undoBuffer end end]
+					}
+				} elseif {$sRow+1 == $lsRow && $txt == "\n"} {
+					append txt $ltxt
+					set undoBuffer [lreplace $undoBuffer end end]
+				}
+			}
+			lappend undoBuffer [list $type $sRow $sCol $txt]
+		}
+	}
+}
+
+proc handlePageUp {} {
+	global IDX bufRow bufCol viewRow
+
+	set size [expr {$IDX(ROWMAX) - 1}]
+	if {$bufRow < $size} {
+		set bufRow  0
+		set viewRow 1
+	} else {
+		incr bufRow  -$size
+		incr viewRow -$size
+	}
+	endLine
+	handleRedraw
+}
+
+proc handlePageDown {} {
+	global IDX BUFFER bufRow bufCol viewRow
+
+	set size [expr {$IDX(ROWMAX) - 1}]
+	incr bufRow  $size
+	incr viewRow $size
+	if {$bufRow >= [llength $BUFFER]} {
+		set viewRow [llength $BUFFER]
+		set bufRow  [expr {$viewRow - 1}]
+	}
+	endLine
+	handleRedraw
+}
+
+proc handleGotoLine {n} {
+	global bufRow viewRow BUFFER
+
+	set bufRow [expr {$n-1}]
+	if {$bufRow < $viewRow} {
+		set viewRow 0
+	} else {
+		set len [llength $BUFFER]
+		if {$bufRow > $len} {
+			set bufRow [expr {$len-1}]
+		}
+	}
+	handleRedraw
+}
+
+proc goToDef {} {
+	global tags tags_root filename IDX comeFrom
+
+	set tag [currentWord string]
+
+	if {[info exists tags($tag)]} {
+		if {[llength $tags($tag)] > 2} {
+			status "Warning! More than 1 found."
+			flush stdout
+		} else {
+			status "Going to definition.."
+			flush stdout
+		}
+
+		lassign $tags($tag) defFile searchSpec
+
+		set thisDir [pwd]
+		set redir ">&@ stdout <@ stdin"
+		set myself "$redir {[info nameofexecutable]} {[info script]}"
+		set command ""
+
+		if {[regexp {^(\d+);\"$} $searchSpec - lineNumber]} {
+			set command [list -G $lineNumber]
+		}
+		if {[regexp {^/\^(.+)\$/;\"$} $searchSpec - literal]} {
+			set command [list -F "(?cq)$literal"]
+		}
+
+		if {$command != ""} {
+			lappend command -define comeFrom "$filename > "
+
+			cd $tags_root
+			if {[catch "exec $myself {$defFile} $command" err]} {
+				puts $err
+			}
+			cd $thisDir
+
+			# Set raw mode again bacause the exiting program
+			# may have reset it to canonical mode:
+			exec stty raw -echo  
+
+			# Set window title:
+			puts -nonewline "\033\]0;$comeFrom$filename\007"
+
+			read stdin
+			set IDX(ROWLAST) -1 ;# force redraw
+			status ""
+			handleRedraw
+		}
+	}
+}
+
+proc suspend {} {
+	global filename searchpattern modified
+	global searchhistory gotohistory
+	global viewRow viewCol bufRow bufCol
+	global undoBuffer redoBuffer BUFFER
+
+	# Don't save anything if BUFFER is not modified:
+	if {$modified} {
+		saveFile
+		set suspendFile $filename.tsuspend
+
+		set f [open $suspendFile w+]
+		fconfigure $f
+		puts $f "ted suspend"
+		foreach x {
+			filename
+			searchpattern
+			viewRow viewCol bufRow bufCol
+		} {
+			puts $f [list $x [set $x]]
+		}
+		foreach x {undoBuffer redoBuffer searchhistory gotohistory} {
+			puts $f "$x {[join [string map {\n \000} [set $x]] \n]}"
+		}
+		puts $f "BUFFER {[join $BUFFER \n]}"
+		close $f
+	}
+	doExit
+}
+
+proc resume {data} {
+	global filename searchpattern modified
+	global searchhistory gotohistory
+	global viewRow viewCol bufRow bufCol
+	global undoBuffer redoBuffer BUFFER
+	set modified 1
+	set ted ""
+
+	foreach {var val} $data {
+		if {$var == "ted" || $ted == "suspend"} {
+			if {$var == "BUFFER"} {
+				set $var [split $val "\n"]
+			} elseif {
+				$var == "undoBuffer"    ||
+				$var == "redoBuffer"    ||
+				$var == "searchhistory" ||
+				$var == "gotohistory"
+			} {
+				set $var "[string map {\000 \n} [split $val \n]]"
+			} else {
+				set $var $val
+			}
+		}
+	}
+	return $ted
+}
+
+################################
+# Key bindings
+################################
+proc handleEscapes {} {
+	uplevel 1 {
+		set seq ""
+		set found 0
+		while {[set ch [readbuf keybuffer]] != ""} {
+		append seq $ch
+
+		switch -exact -- $seq {
+			"1" - "2" - "3" -
+			"4" - "5" - "6" { ;# Alt-1,Alt-2..Alt-6 (select autocomplete)
+				substAutoComplete [expr {$seq-1}]
+				handleRedraw edit
+				set found 1; break
+			}
+			"`" { ;# hack to handle unavailability of Alt-1 on ubuntu:
+				substAutoComplete 0
+				handleRedraw edit
+				set found 1; break
+			}
+			"\[A" { ;# Cursor Up (cuu1,up)
+				if {$bufRow > 0} {
+					if {[getCol $bufRow $bufCol] > $IDX(COLMAX)} {
+						set tmp $bufCol
+						set bufCol 0
+						handleRedraw line
+						set bufCol $tmp
+					}
+					incr bufRow -1
+					incr viewRow -1
+				}
+				endLine
+				handleRedraw
+				set found 1; break
+			}
+			"\[B" { ;# Cursor Down
+				if {$bufRow < [expr {[llength $BUFFER] - 1}]} {
+					if {[getCol $bufRow $bufCol] > $IDX(COLMAX)} {
+						set tmp $bufCol
+						set bufCol 0
+						handleRedraw line
+						set bufCol $tmp
+					}
+
+					incr bufRow 1
+					incr viewRow 1
+				}
+				endLine
+				handleRedraw
+				set found 1; break
+			}
+			"\[C" { ;# Cursor Right (cuf1,nd)
+				if {$bufCol < [string length [lindex $BUFFER $bufRow]]} {
+					incr bufCol 1
+				}
+				handleRedraw line
+				set found 1; break
+			}
+			"\[D" { ;# Cursor Left
+				if {$bufCol > 0} {
+					incr bufCol -1
+				}
+				handleRedraw line
+				set found 1; break
+			}
+			"OH" -
+			"\[H" -
+			"\[7~" -
+			"\[1~" { ;# home
+				set line [lindex $BUFFER $bufRow]
+				set homeCol [regexp \
+					-indices -inline -- \
+					{^[[:space:]]*} $line]
+				set homeCol [lindex [lindex $homeCol 0] 1]
+				incr homeCol
+				if {$bufCol != $homeCol} {
+					set bufCol $homeCol
+				} else {
+					set bufCol 0
+				}
+				handleRedraw line
+				set found 1; break
+			}
+			"\[3~" { ;# delete
+				handleDelete +
+				set found 1; break
+			}
+			"OF" -
+			"\[F" -
+			"\[K" -
+			"\[8~" -
+			"\[4~" { ;# end
+				set bufCol [string length [lindex $BUFFER $bufRow]]
+				handleRedraw line
+				set found 1; break
+			}
+			"\[5~" { ;# 5 Prev screen
+				handlePageUp
+				set found 1; break
+			}
+			"\[6~" { ;# 6 Next screen
+				handlePageDown
+				set found 1; break
+			}
+			"OR" -
+			"\[13~" { ;# F3
+				handleSearch
+				set found 1; break
+			}
+			"\[1;5B" { ;# ^-down arrow
+				goToDef
+				set found 1; break
+			}
+			"\[1;5A" { ;# ^-up arrow
+				# Return from Def
+				# This is basically the same as quit but
+				# only when we come from another file.
+
+				global comeFrom
+				if {$comeFrom != ""} {
+					saveFile
+					doExit
+				}
+				set found 1; break
+			}
+		}
+		}
+		if {$found == 0} {
+			status "Unhandled sequence:$seq ([string length $seq])"
+			flush stdout
+		}
+	}
+}
+
+proc handleControls {} {
+	global statusmessage
+	set old_statusmessage $statusmessage
+	uplevel 1 {
+		# Control chars start at a == \u0001 and count up.
+		switch -exact -- $char {
+			\u001a { ;# ^z - undo
+				handleUndo undoBuffer redoBuffer
+			}
+			\u0019 { ;# ^y - redo
+				handleUndo redoBuffer undoBuffer
+			}
+			\u001c { ;# ^| - dump undoBuffer (for dubugging)
+				global undoBuffer redoBuffer filename tags gotohistory
+				clear
+				goto home
+				puts $::ABOUT
+				puts "File: $filename"
+				puts "Autocomplete: $::autoCompleteMatches"
+				puts "\033\[7mUndo buffer ([llength $undoBuffer] actions):\033\[0m"
+				if {[llength $undoBuffer] > 10} {puts ...}
+				foreach x [lrange $undoBuffer end-5 end] {
+					puts $x
+				}
+				puts "\033\[7mRedo buffer ([llength $redoBuffer] actions):\033\[0m"
+				if {[llength $redoBuffer] > 10} {puts ...}
+				foreach x [lrange $redoBuffer end-5 end] {
+					puts $x
+				}
+				puts "\033\[7mGoto history ([llength $gotohistory]):\033\[0m"
+				if {[llength $gotohistory] > 10} {puts ...}
+				foreach x [lrange $gotohistory end-5 end] {
+					puts $x
+				}
+				puts "\033\[7mCTags ([array size tags] tags):\033\[0m"
+				foreach {x y} [lrange [array get tags] 0 13] {
+					puts "$x -> [lindex $y 0]"
+				}
+				status "Press ESC to exit this screen"
+				idx $viewRow $viewCol
+				flush stdout
+
+				# Wait for ESC key:
+				fconfigure stdin -blocking 1
+				while 1 {if {[read stdin 1] == "\033"} break}
+				fconfigure stdin -blocking 0
+				read stdin
+				set IDX(ROWLAST) -1 ;# force redraw
+				status ""
+				handleRedraw
+			}
+			\u0011 { ;# ^q - quit
+				return done
+			}
+			\u0001 { ;# ^a - beginning of line
+				set bufCol 0
+				handleRedraw line
+			}
+			\u0003 { ;# ^c
+				doExit 1
+			}
+			\u0004 { ;# ^d - delete line
+				if {$bufRow < [llength $BUFFER] && $writable} {
+					set oldline [lindex $BUFFER $bufRow]
+					set BUFFER [lreplace $BUFFER $bufRow $bufRow]
+
+					registerUndo D $bufRow 0 "$oldline\n"
+
+					handleRedraw partial
+
+					if {$bufRow >= [llength $BUFFER] && $bufRow > 0} {
+						incr bufRow -1
+						incr viewRow -1
+						handleRedraw partial
+					}
+				}
+			}
+			\u0005 { ;# ^e - end of line
+				set bufCol [string length [lindex $BUFFER $bufRow]]
+				handleRedraw line
+			}
+			\u0006 { ;# ^f - find/search
+				global searchpattern searchhistory
+				set searchpattern [getInput keybuffer "Search:" searchhistory]
+				historyAppend searchhistory $searchpattern
+				handleSearch
+			}
+			\u0007 { ;# ^g - goto line
+				global gotohistory
+				set n [getInput keybuffer "Goto Line:" gotohistory]
+				set n [regexp -inline {\S+} $n]
+
+				# Support here index for bookmarking.
+				if {$n == "here"} {
+					set n [expr {$bufRow+1}]
+				}
+
+				if {[string is integer -strict $n]} {
+					set theLine [lindex $BUFFER [expr {$n-1}]]
+					historyAppend gotohistory "$n : [string trim $theLine]"
+
+					handleGotoLine $n
+				} else {
+					status ""
+					handleRedraw
+				}
+			}
+			\u000f { ;# ^o - page up
+				handlePageUp
+			}
+			\u0010 { ;# ^p - page down
+				handlePageDown
+			}
+			\u0013 { ;# ^s - save file
+				saveFile
+			}
+			\u0017 { ;# ^w - suspend
+				# Suspend saves the current BUFFER along with most other
+				# internal variables like the undo and redo buffers to a
+				# file which can be later opened to resume editing.
+				# Suspend does not save the original file.
+				suspend
+			}
+			\u0008 -
+			\u007f { ;# ^h && backspace ?
+				handleDelete -
+			}
+			\u001b { ;# ESC - handle escape sequences
+				after 10
+				append keybuffer [read stdin]
+				handleEscapes
+			}
+			default {
+				binary scan $char c ch
+				status "Unhandled control character:[format 0x%x $ch]"
+				flush stdout
+			}
+		}
+
+		# Rate limiter:
+		set firstEsc [string last \u001b $keybuffer]
+		if {$firstEsc == -1} {
+			set keybuffer ""
+		} else {
+			set keybuffer [string range $keybuffer $firstEsc end]
+		}
+	}
+	# Reset autocomplete:
+	global tabCompleteWord autoCompleteMatches
+	set tabCompleteWord ""
+	if {$autoCompleteMatches != ""} {
+		set autoCompleteMatches ""
+		if {$statusmessage == $old_statusmessage} {
+			status ""
+			flush stdout
+		}
+	}
+}
+
+################################
+# Rendering engine
+################################
+proc linerange {row} {
+	global BUFFER tabstop bufCol
+
+	set col 0
+	set line ""
+	set L [split [lindex $BUFFER $row] "\t"]
+	set last [lindex $L end]
+	set L [lrange $L 0 end-1]
+	foreach c $L {
+		incr col [string length $c]
+		set n [expr {$tabstop-$col%$tabstop}]
+		incr col $n
+
+		# align to tabs:
+		append line $c
+		append line [string repeat " " $n]
+	}
+	append line $last
+}
+
+proc handleRedraw {{mode "full"}} {
+	# Valid modes are: full(default), line, edit, partial
+
+	global IDX BUFFER tabstop viewRow viewCol bufRow bufCol
+
+	# Buffer-up everything so we can manage outputs better:
+	set drawBuffer ""
+
+	# Constrain current view idx
+	set inview 1
+	if {$viewRow <= 1} {set viewRow 1}
+	if {$viewRow >= ($IDX(ROWMAX) - 1)} {
+		set viewRow [expr {$IDX(ROWMAX) - 1}]
+		set inview 0
+	}
+
+	set startRow [expr {$bufRow + 1 - $viewRow}]
+	if {$mode == "partial" && $inview} {
+		set start $bufRow
+		append drawBuffer [doGoto $viewRow 1]
+	} else {
+		set start $startRow
+		append drawBuffer [doGoto home]
+	}
+	set row $bufRow
+
+	if {$mode == "full" || $mode == "partial"} {
+		if {$IDX(ROWLAST) != $startRow || $mode == "partial"} {
+			# Add display size to get end points
+			set endRow [expr {$startRow + $IDX(ROWMAX) - 1}]
+			set i 0
+			for {set row $start} {$row < $endRow} {incr row} {
+				incr i
+				if {$row == $bufRow} {
+					append drawBuffer "\n"
+				} else {
+					set line [linerange $row]
+					append drawBuffer [clearline]
+					append drawBuffer [syntaxHilight $line 0]
+					append drawBuffer "\n"
+				}
+			}
+		}
+	}
+
+	set line [linerange $bufRow]
+	set viewCol [set col [getCol $bufRow $bufCol]]
+	if {$viewCol >= $IDX(COLMAX)} {set viewCol $IDX(COLMAX)}
+
+	if {$IDX(ROWLAST) != $startRow ||
+		$mode == "line" ||
+		$mode == "edit" ||
+		$mode == "partial"
+	} {
+		set startCol [expr {$col-$viewCol}]
+		if {$mode != "line" || $IDX(COLLAST) != $startCol} {
+			append drawBuffer [doGoto $viewRow 1]
+			append drawBuffer [clearline]
+			append drawBuffer [syntaxHilight $line $startCol " "]
+			set IDX(COLLAST) $startCol
+		}
+	}
+
+	if {$IDX(ROWLAST) != $startRow} {
+		set IDX(ROWLAST) $startRow
+	}
+
+	idx [expr {$bufRow + 1}] [expr {$bufCol+1}]
+
+	append drawBuffer [doGoto $viewRow $viewCol]
+
+	# Output line at a time to avoid causing the terminal to hang:
+	set d [split $drawBuffer \n]
+	foreach line [lrange $d 0 end-1] {
+		puts $line
+	}
+	puts -nonewline [lindex $d end]
+
+	flush stdout
+}
+
+################################
+# main()
+################################
+proc edittext {} {
+	global BUFFER IDX viewRow viewCol bufRow bufCol writable tabCompleteWord
+	global init_commands
+
+	set IDX(ROWLAST) -1 ; # last row most recently displayed in view
+	set IDX(COLLAST) -1
+	set char ""         ; # last char received
+	set line [lindex $BUFFER $bufRow] ; # line data of current line
+
+	handleRedraw
+	goto home; flush stdout
+	set keybuffer ""
+	set printbuffer ""
+	set timestamp [clock seconds]
+	set prevRow $bufRow
+
+	foreach cmd $init_commands {
+		eval $cmd
+	}
+
+	while {$char != "\u0011"} {
+		append keybuffer [read stdin]
+		if {[eof stdin]} {return done}
+		if {$keybuffer == ""} {
+			set now [clock seconds]
+			if {$now != $timestamp} {
+				set timestamp $now
+				set changed 0
+				getRowColMax
+				if {$changed} {
+					status
+					idx $bufRow $bufCol
+					set IDX(ROWLAST) -1 ;# force redraw
+					handleRedraw
+				}
+			}
+			if {$printbuffer != ""} {
+				handleInsert
+				if {$prevRow != $bufRow} {
+				set prevRow $bufRow
+					handleRedraw
+				}
+				handleRedraw edit
+				set printbuffer ""
+			}
+			after 40
+			continue
+		}
+		set char [readbuf keybuffer]
+
+		if {[string is print $char] || $char == "\t"} {
+			append printbuffer $char
+		} elseif {$char == "\n" || $char == "\r"} {
+			handleInsert
+			handleNewline
+			if {$keybuffer == ""} {
+				handleRedraw
+			}
+			set printbuffer ""
+		} else {
+			handleControls
+			set prevRow $bufRow
+		}
+	}
+}
+
+proc getRowColMax {} {
+	uplevel 1 {
+		if {![catch {exec stty -a} err]
+		&& [regexp {rows (\d+); columns (\d+)} $err -> rows cols]} {
+			if {$rows != 0 && $cols != 0} {
+				if {$rows != $IDX(ROWMAX)} {
+					set IDX(ROWMAX) $rows
+					set changed 1
+				}
+				if {$cols != $IDX(COLMAX)} {
+					set IDX(COLMAX) $cols
+					set changed 1
+				}
+			}
+		}
+		if {$changed} {
+			set IDX(ROWCOL) [expr {$IDX(COLMAX) - $IDX(ROWCOLLEN)}]
+		}
+	}
+}
+
+proc saveFile {} {
+	global filename BUFFER modified
+
+	if {!$modified} return
+
+	status "Save '$filename'? Y/n"
+	flush stdout
+	fconfigure stdin -blocking 1
+	while 1 {
+		set line [read stdin 1]
+		if {$line == "y" || $line == "Y" || $line == "\n"} {
+			set outfile [open $filename w ]
+			fconfigure $outfile
+			for {set i 0} {$i<[expr [llength $BUFFER]-1]} {incr i} {
+				puts $outfile [lindex $BUFFER $i]
+			}
+			puts -nonewline $outfile [lindex $BUFFER end]
+			close $outfile
+			status " Saved '$filename' ([llength $BUFFER] lines)"
+
+			# Delete suspended file:
+			if {[file exists $filename.tsuspend]} {
+				file delete $filename.tsuspend
+			}
+
+			set modified 0
+			break
+		} elseif {$line == "n" || $line == "N" || $line == "\033"} {
+			status " Aborted"
+			break
+		} elseif {$line == "\u0003"} {
+			doExit
+		}
+	}
+	flush stdout
+	fconfigure stdin -blocking 0
+}
+
+proc bufferModified {args} {
+	global modified
+	set modified 1
+}
+
+array set tags {}
+set tags_root [pwd]
+
+proc loadTags {fileName} {
+	global tags tags_root
+
+	while {[set dir [file dirname $fileName]] != "/"} {
+		if {[file isfile $dir/tags] && [file readable $dir/tags]} {
+			set f [open $dir/tags]
+			set txt [read $f]
+			close $f
+
+			set tags_root $dir
+
+			foreach line [split $txt \n] {
+				if {![regexp {^!_TAG_} $line]} {
+					lassign [split $line \t] tagName tagLocation searchSpec
+
+					if {$tagName != ""} {
+						if {![info exists tags($tagName)]} {
+							set tags($tagName) [list $tagLocation $searchSpec]
+						} else {
+							lappend tags($tagName) $tagLocation $searchSpec
+						}
+					}
+				}
+			}
+
+			return
+		}
+		set fileName $dir
+	}
+}
+
+proc console_edit {fileName} {
+global BUFFER IDX tabstop bufRow bufCol writable
+global filename fileext comeFrom
+
+set IDX(ROWMAX) 24
+set IDX(COLMAX) 80
+set IDX(ROWCOLLEN) 18
+set changed 1
+set BUFFER ""
+
+getRowColMax
+
+if {[file isfile $fileName]} {
+	if {[file readable $fileName]} {
+		set mode ""
+		set f [open $fileName r]
+		fconfigure $f
+		set data [read $f]
+		if {[file extension $fileName] == ".tsuspend"} {
+			set mode [resume $data]
+		}
+		if {$mode != "suspend"} {
+			set BUFFER [split $data "\n"]
+		} else {
+			set fileName "$filename RESUMED"
+		}
+		close $f
+		if {[file writable $filename] == 0} {
+			set writable 0
+		}
+		if {$writable} {
+			status "Opened: $fileName"
+		} else {
+			status "Opened: $fileName, READ ONLY!"
+		}
+		loadTags [file normalize $fileName]
+	} else {
+		puts "Can't read file: \"$fileName\""
+		exit
+	}
+} else {
+	status "New file: $fileName"
+}
+
+if {$fileext == ""} {
+	set topline [lindex $BUFFER 0]
+	if {[string range $topline 0 1] == "#!"} {
+		set fileext [lindex [split $topline "/"] end]
+	} else {
+		set fileext [lindex [split [file tail $filename] "."] end]
+	}
+}
+initSyntaxRules $fileext
+
+trace variable BUFFER w bufferModified
+
+fconfigure stdin -buffering none -blocking 0
+fconfigure stdout -buffering full -translation crlf
+
+# Set window title:
+puts -nonewline "\033\]0;$comeFrom$filename\007"
+
+exec stty raw -echo
+set err [catch edittext]
+
+if {$err == 0} {
+	saveFile
+} else {
+	global errorInfo
+	puts $errorInfo
+}
+
+doExit $err
+}
+
+proc doExit {{err 0}} {
+	# Reset terminal:
+	puts -nonewline "\033c\033\[2J"
+	if {$err} {
+		if {[info exists $::errorInfo]} {
+			puts $::errorInfo
+		}
+	}
+	flush stdout
+	exec stty -raw echo
+	after 100
+	exit 0
+}
+
+proc initSyntaxRules {fileext} {
+	global syntaxRules hilight fg bg style STRINGS NUMBERS COMMENT_FORMAT
+
+	set hilight ""
+	foreach {filepattern rule} [
+		string map [
+			list \
+			{$STRINGS} $STRINGS \
+			{$NUMBERS} $NUMBERS \
+			{$COMMENT_FORMAT} $COMMENT_FORMAT
+		] $syntaxRules
+	] {
+		if {[regexp $filepattern $fileext]} {
+			foreach {pattern attr} $rule {
+				lappend hilight $pattern [subst $attr]
+			}
+		}
+	}
+}
+
+# Parse command line arguments:
+set cmdline $argv
+set argv ""
+set init_commands {}
+while {[llength $cmdline]} {
+	set arg [shift cmdline]
+	switch -exact -- $arg {
+		-s {
+			set f [open [shift cmdline] r]
+			append syntaxRules "\n[read $f]"
+			close $f
+		}
+		-S {
+			set f [open [shift cmdline] r]
+			set syntaxRules [read $f]
+			close $f
+		}
+		-f {set fileext [shift cmdline]}
+		-r {set writable 0}
+		-define {
+			set var [shift cmdline]
+			global $var
+			set $var [shift cmdline]
+		}
+		-G {
+			lappend init_commands "handleGotoLine [shift cmdline]"
+		}
+		-F {
+			set searchpattern [shift cmdline]
+			lappend init_commands "handleSearch"
+		}
+		--help {
+			puts "tcled: editor written in tcl"
+			puts "usage: tcled ?options? filename\n"
+			puts "Where options are:"
+			puts "  -s file    append syntax rules from file"
+			puts "  -S file    replace syntax rules with rules from file"
+			puts "  -f ext     pretend file extension is ext"
+			puts "  -r         open file as read-only"
+			puts "  -G line    go to line number"
+			puts "  -F regex   find"
+			exit
+		}
+		default {lappend argv $arg}
+	}
+}
+
+set syntaxRules [stripComments $syntaxRules]
+
+if {[llength $argv] == 0} {
+	puts "Please specify a filename:"
+	gets stdin filename
+	if {$filename != ""} {
+		console_edit $filename
+	}
+} else {
+	foreach filename $argv {
+		console_edit $filename
+	}
+}
