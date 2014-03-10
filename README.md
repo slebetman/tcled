@@ -3,6 +3,25 @@ tcled
 
 Pure Tcl Console Text Editor
 ----------------------------
+Simple text editor with syntax hilighting in a single file tcl script!
+
+This editor is based on Steve Redler's minimal console text editor
+in Tcl (http://wiki.tcl.tk/11820). I took Steve's code and modified it to do
+syntax hilighting. Since then it's had enough features added to it that it is now
+good enough for me to use as my primary code editor.
+
+Part of the reason I wrote this is because I got tired of console text editors behaving
+very differently from regular GUI text editors. As such, this has key bindings that's
+as close as possible to GUI text editors: ctrl-S to save files, F3 to search,
+ctrl-G to go to line etc.
+
+Another reason I wrote this was because I needed a decent editor, with syntax hilighting,
+in an environments that don't have compilers and where it's difficult or impossible to
+install binaries correctly. Cisco routers and Tivo boxes for example (in my case it was
+GreenPacket routers back when I was employed by GreenPacket to develop software for
+their routers). Fortunately these routers almost always include tcl and fortunately
+tcl is powerful enough that it's possible to write a simple text editor without any
+additional modules.
 
 Features:
 ---------
