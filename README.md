@@ -1,10 +1,9 @@
 tcled
 =====
+Simple text editor with syntax hilighting in a single file tcl script!
 
 Pure Tcl Console Text Editor
 ----------------------------
-Simple text editor with syntax hilighting in a single file tcl script!
-
 This editor is based on Steve Redler's minimal console text editor
 in Tcl (http://wiki.tcl.tk/11820). I took Steve's code and modified it to do
 syntax hilighting. Since then it's had enough features added to it that it is now
