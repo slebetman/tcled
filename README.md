@@ -40,45 +40,88 @@ Features:
 
 Usage:
 ------
-- Arrow keys : Moves the cursor around. Typing anything inserts text at the cursor.
-- Backspace : Deletes the character before the cursor.
-- Delete : Deletes the character behind the cursor.
-- Home : Moves the cursor to the first non-whitespace character on the current line. Pressing it a second time moves the cursor to the beginning of the line.
-- End : Moves the cursor to the end of the line.
-- Page Up and Page Down : Moves the cursor backwards and forwards one full page at a time.
+- `Arrow keys` : Moves the cursor around. Typing anything inserts text at the cursor.
+- `Backspace` : Deletes the character before the cursor.
+- `Delete` : Deletes the character behind the cursor.
+- `Home` : Moves the cursor to the first non-whitespace character on the current line. Pressing it a second time moves the cursor to the beginning of the line.
+- `End` : Moves the cursor to the end of the line.
+- `Page Up` and `Page Down` : Moves the cursor backwards and forwards one full page at a time.
 
 Basically the usual navigation keys behaves as expected. The "^" character below denotes pressing the Ctrl key.
-- ^a : Moves the cursor to the beginning of the line.
-- ^c : Exits the program.
-- ^d : Deletes the current line.
-- ^e : Moves the cursor to the End of the line.
-- ^f : Find/Search. The search pattern is regexp based so characters like ".", "(" and "[" needs to be escaped.
-- F3 : Repeat the previous search.
-- ^g : Goto line number. If you type "here" as the line number you will goto the current line. Since goto keeps a history of all previous gotos the "here" index is useful for bookmarking the current line.
-- ^o : Page Up. Moves the cursor backwards one full page.
-- ^p : Page Down. Moves the cursor forwards one full page.
-- ^q : Quits/Exits the program. Ask to save the file if buffer is modified.
-- ^s : Save the file.
-- ^z : Undo the previous edit.
-- ^y : Redo the last undo.
-- ^w : Suspend the session, optionally save the file and exit. The suspended session is saved to a file with a .tsuspend extension. Opening this file will resume where you left off.
-- Tab : When typing autocompletes the current word.
-- ^Down Arrow : Go to definition of word under cursor (if found in tags file).
-- ^Up Arrow : Return from definition.
+- `^a` : Moves the cursor to the beginning of the line.
+- `^c` : Exits the program.
+- `^d` : Deletes the current line.
+- `^e` : Moves the cursor to the End of the line.
+- `^f` : Find/Search. The search pattern is regexp based so characters like ".", "(" and "[" needs to be escaped.
+- `F3` : Repeat the previous search.
+- `^g` : Goto line number. If you type "here" as the line number you will goto the current line. Since goto keeps a history of all previous gotos the "here" index is useful for bookmarking the current line.
+- `^o` : Page Up. Moves the cursor backwards one full page.
+- `^p` : Page Down. Moves the cursor forwards one full page.
+- `^q` : Quits/Exits the program. Ask to save the file if buffer is modified.
+- `^s` : Save the file.
+- `^z` : Undo the previous edit.
+- `^y` : Redo the last undo.
+- `^w` : Suspend the session, optionally save the file and exit. The suspended session is saved to a file with a .tsuspend extension. Opening this file will resume where you left off.
+- `Tab` : When typing autocompletes the current word.
+- `^Down Arrow` : Go to definition of word under cursor (if found in tags file).
+- `^Up Arrow` : Return from definition.
 
 Command Line Arguments:
 -----------------------
-- -s filename : Append the syntax rules defined in a file to the current list of syntax rules.
-- -S filename : Replace the current syntax rules with ones defined in the file.
-- -f extension : Force the syntax highlighter to use the rules for the given extension.
-- -G line_number : Open file and go to line.
-- -F regexp : Open file and executes a find/search.
-- -define variable value : Allows you to modify global variables.
+- `-s filename` : Append the syntax rules defined in a file to the current list of syntax rules.
+- `-S filename` : Replace the current syntax rules with ones defined in the file.
+- `-f extension` : Force the syntax highlighter to use the rules for the given extension.
+- `-G line_number` : Open file and go to line.
+- `-F regexp` : Open file and executes a find/search.
+- `-define variable value` : Allows you to modify global variables.
 
 Code:
 -----
-The control character and escape sequence handling have been re-written to be more general and to report
-unhandled cases. This is to make it easier to add new features to the code. For example, if you want to
-implement a feature and bind it to ^k just run the editor and press ^k. It will tell you "Unhandled control
-character:0xb" so that you know you should add the code as a \u000b case in handleControls. The same goes
-for escape sequences. For example, pressing F12 will generate the message "Unhandled sequence:[24~"
+The control character and escape sequence handling have been re-written to be more
+general and to report unhandled cases. This is to make it easier to add new features
+to the code. For example, if you want to implement a feature and bind it to ^k just
+run the editor and press `^k`. It will tell you `"Unhandled control character:0xb"` 
+so that you know you should add the code as a `\u000b` case in handleControls.
+The same goes for escape sequences. For example, pressing `F12` will generate the
+message `"Unhandled sequence:[24~"`
+
+Syntax Hilighting Rules:
+------------------------
+The rules for syntax hilighting are currently hardcoded in the file and contained within
+the variable syntaxRules located at the top of the code. The syntax rules is in the form:
+
+    {filepattern} {{regexp} {formatting}..}
+
+Comments (after #) are ignored. Syntax hilighting is line based so we can't have 
+multi-line rules like C-style comments.
+If more than one rule applies to piece of text then the most encompassing rule wins. 
+For example for the text:
+
+    "$example"
+	
+both the script variable (due to `$`) and the string rules `(".*?")` apply. 
+However since the string rule encompasses the script variable rule then the 
+string rule wins and the text is colored according to the string rule.
+
+But within each rule the opposite is true. If the regexp matches a piece of 
+text multiple times then the most specific match wins. For example for the Tcl 
+variable regexp:
+
+    {(?:set|append|incr) ([a-zA-Z_][a-zA-Z0-9_]*)}
+
+the text:
+
+    set x
+
+matches twice. Once for `set x` and another time for `x`. Since `x` is more specific 
+then only it will be colored by the rule. This overcomes Tcl's lack of look-behind 
+in its regexp engine.
+
+Formatting is defined by ANSI escape sequence. For example bright green is `{1;32}`. 
+The arrays `fg`, `bg` and `style` above makes it more convenient to define the 
+formatting. Using the previous example bright green may be written as 
+`{$style(bright);$fg(green)}`.
+
+Also, due to the way the renderig engine works, the syntax hilighting rules cannot 
+distinguish between tabs and spaces. So for the purpose of writing the syntax 
+regexp `" "`, `"\s"`, `"\t"` and `"[[:space:]]"` are synonymous.
