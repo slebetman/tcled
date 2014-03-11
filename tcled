@@ -1,10 +1,11 @@
 #! /usr/bin/env tclsh
 
 set ABOUT {
-tcledit: a linux console based editor in pure tcl
+tcled: A Linux console based editor in pure Tcl
 
-2001-05-30 Original code by Steve Redler IV
-2006-06-23 Modified by Adly Abdulah
+Copyright (c) 2006 Steve Redler IV
+Copyright (c) 2006 Jeffrey Hobbs
+Copyright (c) 2013 Adly Abdulah
 }
 
 ################################
