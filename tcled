@@ -411,23 +411,23 @@ proc drawMenu {selections {selected ""}} {
 	flush stdout
 }
 
-proc selectMenu {buffer selections {default ""}} {
+proc selectMenu {buffer selections {selected -1}} {
 	global IDX
 	upvar 1 $buffer keybuffer
 	
 	# hide cursor:
 	puts -nonewline "\033\[?25l"
 	
-	drawMenu $selections
-	
-	set selected -1
+	drawMenu $selections $selected
 	
 	while {[set ch [readbuf keybuffer]] != "\n" && $ch != "\r"} {
 		if {$ch == ""} {
 			after 40
 			continue
 		}
-		if {$ch == "\u001b"} {
+		if {$ch == "\u0003"} {
+			doExit
+		} elseif {$ch == "\u001b"} {
 			# attempt to get all escape characters
 			# on slow connections/terminals:
 			after 10
@@ -1125,14 +1125,25 @@ proc goToDef {} {
 
 	if {[info exists tags($tag)]} {
 		if {[llength $tags($tag)] > 2} {
-			status "Warning! More than 1 found."
+			set selection {}
+			foreach {sourceFile searchSpec} $tags($tag) {
+				lappend selection "$sourceFile: $searchSpec"
+			}
+			set tempBuffer ""
+			set ss [selectMenu tempBuffer $selection 0]
+			if {$ss >= 0} {
+				set ss [expr {$ss*2}]
+				set defFile [lindex $tags($tag) $ss]
+				set searchSpec [lindex $tags($tag) [expr $ss+1]]
+			} else {
+				return
+			}
 			flush stdout
 		} else {
 			status "Going to definition.."
 			flush stdout
+			lassign $tags($tag) defFile searchSpec
 		}
-
-		lassign $tags($tag) defFile searchSpec
 
 		set thisDir [pwd]
 		set redir ">&@ stdout <@ stdin"
@@ -1143,7 +1154,18 @@ proc goToDef {} {
 			set command [list -G $lineNumber]
 		}
 		if {[regexp {^/\^(.+)\$/;\"$} $searchSpec - literal]} {
-			set command [list -F "(?cq)$literal"]
+			set literal [string map {
+				$ {\$}
+				. {\.}
+				* {\*}
+				^ {\^}
+				? {\?}
+				( {\(}
+				) {\)}
+				\{ {\\\{}
+				\} {\\\}}
+			} $literal]
+			set command [list -F "(?c)^$literal\$"]
 		}
 
 		if {$command != ""} {
@@ -1352,12 +1374,6 @@ uplevel 1 {
 					saveFile
 					doExit
 				}
-				set found 1; break
-			}
-			"OQ" { ;# F2 -- testing..
-				set items {{this is a test} {second item} {third item}}
-				puts -nonewline [lindex $items [selectMenu keybuffer $items]]
-				flush stdout
 				set found 1; break
 			}
 		}
@@ -1701,24 +1717,24 @@ proc edittext {} {
 }
 
 proc getRowColMax {} {
-uplevel 1 {
-	if {![catch {exec stty -a} err]
-		&& [regexp {rows (\d+); columns (\d+)} $err -> rows cols]} {
-		if {$rows != 0 && $cols != 0} {
-			if {$rows != $IDX(ROWMAX)} {
-				set IDX(ROWMAX) $rows
-				set changed 1
-			}
-			if {$cols != $IDX(COLMAX)} {
-				set IDX(COLMAX) $cols
-				set changed 1
+	uplevel 1 {
+		if {![catch {exec stty -a} err]
+			&& [regexp {rows (\d+); columns (\d+)} $err -> rows cols]} {
+			if {$rows != 0 && $cols != 0} {
+				if {$rows != $IDX(ROWMAX)} {
+					set IDX(ROWMAX) $rows
+					set changed 1
+				}
+				if {$cols != $IDX(COLMAX)} {
+					set IDX(COLMAX) $cols
+					set changed 1
+				}
 			}
 		}
+		if {$changed} {
+			set IDX(ROWCOL) [expr {$IDX(COLMAX) - $IDX(ROWCOLLEN)}]
+		}
 	}
-	if {$changed} {
-		set IDX(ROWCOL) [expr {$IDX(COLMAX) - $IDX(ROWCOLLEN)}]
-	}
-}
 }
 
 proc saveFile {} {
@@ -1768,34 +1784,34 @@ array set tags {}
 set tags_root [pwd]
 
 proc loadTags {fileName} {
-global tags tags_root
+	global tags tags_root
 
-while {[set dir [file dirname $fileName]] != "/"} {
-  if {[file isfile $dir/tags] && [file readable $dir/tags]} {
-	set f [open $dir/tags]
-	set txt [read $f]
-	close $f
-	
-	set tags_root $dir
-	
-	foreach line [split $txt \n] {
-	  if {![regexp {^!_TAG_} $line]} {
-		lassign [split $line \t] tagName tagLocation searchSpec
-		
-		if {$tagName != ""} {
-		  if {![info exists tags($tagName)]} {
-			set tags($tagName) [list $tagLocation $searchSpec]
-		  } else {
-			lappend tags($tagName) $tagLocation $searchSpec
-		  }
+	while {[set dir [file dirname $fileName]] != "/"} {
+		if {[file isfile $dir/tags] && [file readable $dir/tags]} {
+			set f [open $dir/tags]
+			set txt [read $f]
+			close $f
+
+			set tags_root $dir
+
+			foreach line [split $txt \n] {
+				if {![regexp {^!_TAG_} $line]} {
+					lassign [split $line \t] tagName tagLocation searchSpec
+
+					if {$tagName != ""} {
+						if {![info exists tags($tagName)]} {
+							set tags($tagName) [list $tagLocation $searchSpec]
+						} else {
+							lappend tags($tagName) $tagLocation $searchSpec
+						}
+					}
+				}
+			}
+
+			return
 		}
-	  }
+		set fileName $dir
 	}
-	
-	return
-  }
-  set fileName $dir
-}
 }
 
 proc console_edit {fileName} {
@@ -1862,7 +1878,6 @@ proc console_edit {fileName} {
 
 	exec stty raw -echo
 	set err [catch edittext]
-
 	if {$err == 0} {
 		saveFile
 	} else {
