@@ -291,6 +291,7 @@ set writable 1
 set autoCompleteMatches ""
 set tabCompleteWord ""
 set comeFrom ""
+set keybuffer ""
 
 ###############################
 # Backport lassign if < 8.5
@@ -314,13 +315,13 @@ proc shift {ls} {
 	return $ret
 }
 
-proc readbuf {txt} {
-	upvar 1 $txt STRING
+proc readbuf {} {
+	global keybuffer
 
-	set ret [string index $STRING 0]
-	set STRING [string range $STRING 1 end]
-	if {$STRING == ""} {
-		append STRING [read stdin]
+	set ret [string index $keybuffer 0]
+	set keybuffer [string range $keybuffer 1 end]
+	if {$keybuffer == ""} {
+		append keybuffer [read stdin]
 	}
 	return $ret
 }
@@ -411,18 +412,17 @@ proc drawMenu {selections {selected ""}} {
 	flush stdout
 }
 
-proc selectMenu {buffer selections {selected -1}} {
-	global IDX
-	upvar 1 $buffer keybuffer
+proc selectMenu {selections {selected -1}} {
+	global IDX keybuffer
 	
 	# hide cursor:
 	puts -nonewline "\033\[?25l"
 	
 	drawMenu $selections $selected
 	
-	while {[set ch [readbuf keybuffer]] != "\n" && $ch != "\r"} {
+	while {[set ch [readbuf]] != "\n" && $ch != "\r"} {
 		if {$ch == ""} {
-			after 40
+			after 10
 			continue
 		}
 		if {$ch == "\u0003"} {
@@ -461,10 +461,9 @@ proc selectMenu {buffer selections {selected -1}} {
 	return $selected
 }
 
-proc getInput {buffer {txt ""} {historybuffer ""}} {
-	global viewRow viewCol
+proc getInput {{txt ""} {historybuffer ""}} {
+	global viewRow viewCol keybuffer
 
-	upvar 1 $buffer keybuffer
 	if {$historybuffer != ""} {
 		upvar 1 $historybuffer hist
 		set hidx -1
@@ -475,7 +474,7 @@ proc getInput {buffer {txt ""} {historybuffer ""}} {
 	puts -nonewline "\033\[7m$txt "
 	flush stdout
 	set ret ""
-	while {[set ch [readbuf keybuffer]] != "\n" && $ch != "\r"} {
+	while {[set ch [readbuf]] != "\n" && $ch != "\r"} {
 		if {$ch == ""} {
 			after 40
 			continue
@@ -514,8 +513,7 @@ proc getInput {buffer {txt ""} {historybuffer ""}} {
 			}
 
 			# need to ignore escapes sequences:
-			while {[set ch [readbuf keybuffer]] != "~"
-				&& $keybuffer != ""} {}
+			while {[set ch [readbuf]] != "~" && $keybuffer != ""} {}
 			continue
 		} elseif {$ch == "\u007f" || $ch == "\u0008"} {
 			# handle backspace:
@@ -879,9 +877,8 @@ proc handleSearch {} {
 
 proc handleNewline {} {
 	global BUFFER viewRow bufRow bufCol
-	global undoBuffer redoBuffer writable
+	global undoBuffer redoBuffer writable keybuffer
 	if {!$writable} return
-	upvar 1 keybuffer keybuffer
 
 	# The getSpaces is for auto-indenting:
 	set line [lindex $BUFFER $bufRow]
@@ -1134,8 +1131,7 @@ proc goToDef {} {
 					lappend selection "$sourceFile: $searchSpec"
 				}
 			}
-			set tempBuffer ""
-			set ss [selectMenu tempBuffer $selection 0]
+			set ss [selectMenu $selection 0]
 			if {$ss >= 0} {
 				set ss [expr {$ss*2}]
 				set defFile [lindex $tags($tag) $ss]
@@ -1254,7 +1250,7 @@ proc handleEscapes {} {
 uplevel 1 {
 	set seq ""
 	set found 0
-	while {[set ch [readbuf keybuffer]] != ""} {
+	while {[set ch [readbuf]] != ""} {
 		append seq $ch
 
 		switch -exact -- $seq {
@@ -1384,7 +1380,7 @@ uplevel 1 {
 }
 
 proc handleControls {} {
-global statusmessage
+global statusmessage keybuffer
 set old_statusmessage $statusmessage
 uplevel 1 {
 	# Control chars start at a == \u0001 and count up.
@@ -1466,13 +1462,13 @@ uplevel 1 {
 		}
 		\u0006 { ;# ^f - find/search
 			global searchpattern searchhistory
-			set searchpattern [getInput keybuffer "Search:" searchhistory]
+			set searchpattern [getInput "Search:" searchhistory]
 			historyAppend searchhistory $searchpattern
 			handleSearch
 		}
 		\u0007 { ;# ^g - goto line
 			global gotohistory
-			set n [getInput keybuffer "Goto Line:" gotohistory]
+			set n [getInput "Goto Line:" gotohistory]
 			set n [regexp -inline {\S+} $n]
 
 			# Support here index for bookmarking.
@@ -1651,7 +1647,7 @@ proc handleRedraw {{mode "full"}} {
 ################################
 proc edittext {} {
 	global BUFFER IDX viewRow viewCol bufRow bufCol writable tabCompleteWord
-	global init_commands
+	global init_commands keybuffer
 
 	set IDX(ROWLAST) -1 ; # last row most recently displayed in view
 	set IDX(COLLAST) -1
@@ -1696,7 +1692,7 @@ proc edittext {} {
 			after 40
 			continue
 		}
-		set char [readbuf keybuffer]
+		set char [readbuf]
 
 		if {[string is print $char] || $char == "\t"} {
 			append printbuffer $char
