@@ -2,6 +2,8 @@ tcled
 =====
 Simple text editor with syntax hilighting in a single file tcl script!
 
+This software is released under a simple 2-clause BSD license.
+
 Pure Tcl Console Text Editor
 ----------------------------
 This editor is based on Steve Redler's minimal console text editor
