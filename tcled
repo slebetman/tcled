@@ -367,7 +367,7 @@ proc drawMenu {selections {selected ""}} {
 	set W $IDX(COLMAX)
 	set H [expr {$IDX(ROWMAX)-1}]
 	
-	set w 40
+	set w 60
 	set h [expr {[llength $selections]+2}]
 	
 	if {$w > $W} {set w $W}
@@ -1127,7 +1127,10 @@ proc goToDef {} {
 		if {[llength $tags($tag)] > 2} {
 			set selection {}
 			foreach {sourceFile searchSpec} $tags($tag) {
-				lappend selection "$sourceFile: $searchSpec"
+				set searchSpec [string trim $searchSpec {\";/ \t^$}]
+				if {$searchSpec != ""} {
+					lappend selection "$sourceFile: $searchSpec"
+				}
 			}
 			set tempBuffer ""
 			set ss [selectMenu tempBuffer $selection 0]
@@ -1155,15 +1158,8 @@ proc goToDef {} {
 		}
 		if {[regexp {^/\^(.+)\$/;\"$} $searchSpec - literal]} {
 			set literal [string map {
-				$ {\$}
-				. {\.}
-				* {\*}
-				^ {\^}
-				? {\?}
-				( {\(}
-				) {\)}
-				\{ {\\\{}
-				\} {\\\}}
+				$ {\$} . {\.} * {\*} ^ {\^} ? {\?}
+				( {\(} ) {\)} \{ {\\\{} \} {\\\}}
 			} $literal]
 			set command [list -F "(?c)^$literal\$"]
 		}
@@ -1798,7 +1794,7 @@ proc loadTags {fileName} {
 				if {![regexp {^!_TAG_} $line]} {
 					lassign [split $line \t] tagName tagLocation searchSpec
 
-					if {$tagName != ""} {
+					if {$tagName != "" && $searchSpec != ""} {
 						if {![info exists tags($tagName)]} {
 							set tags($tagName) [list $tagLocation $searchSpec]
 						} else {
