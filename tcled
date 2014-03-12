@@ -736,7 +736,9 @@ proc handleDelete {dir} {
 			handleRedraw partial
 			return
 		}
-		incr bufCol -1
+		if {$bufCol > 0} {
+			incr bufCol -1
+		}
 	} else {
 		if {$bufCol == [string length $line] && $bufRow < [llength $BUFFER]} {
 			set downRow [expr {$bufRow+1}]
