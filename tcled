@@ -361,6 +361,106 @@ proc historyAppend {thelist item} {
 	lappend hist $item
 }
 
+proc drawMenu {selections {selected ""}} {
+	global viewRow viewCol IDX
+	
+	set W $IDX(COLMAX)
+	set H [expr {$IDX(ROWMAX)-1}]
+	
+	set w 40
+	set h [expr {[llength $selections]+2}]
+	
+	if {$w > $W} {set w $W}
+	if {$h > $H} {set h $H}
+	
+	set x $viewCol
+	if {($x+$w) > $W} {
+		set x [expr {$W-$w}]
+	}
+	set y $viewRow
+	if {($y+$h) > $H} {
+		set y [expr {$H-$h}]
+	}
+	goto $y $x
+	puts -nonewline "\033\[7m[string repeat { } $w]\033\[0m"
+	incr y
+	set j 0
+	foreach i [lrange $selections 0 [expr {$h-2}]] {
+		goto $y $x
+		if {[string length $i] > ($w-2)} {
+			set str [string range $i 0 [expr $w-5]]
+			append str ..
+		} else {
+			set str $i
+		}
+		set l [string length $str]
+		if {$l < ($w-2)} {
+			set r [expr {$w-2-$l}]
+			append str [string repeat { } $r]
+		}
+		if {$selected != $j} {
+			puts -nonewline "\033\[7m $str \033\[0m"
+		} else {
+			puts -nonewline "\033\[7m \033\[0m$str\033\[7m \033\[0m"
+		}
+		incr y
+		incr j
+	}
+	goto $y $x
+	puts -nonewline "\033\[7m[string repeat { } $w]\033\[0m"
+	flush stdout
+}
+
+proc selectMenu {buffer selections {default ""}} {
+	global IDX
+	upvar 1 $buffer keybuffer
+	
+	# hide cursor:
+	puts -nonewline "\033\[?25l"
+	
+	drawMenu $selections
+	
+	set selected -1
+	
+	while {[set ch [readbuf keybuffer]] != "\n" && $ch != "\r"} {
+		if {$ch == ""} {
+			after 40
+			continue
+		}
+		if {$ch == "\u001b"} {
+			# attempt to get all escape characters
+			# on slow connections/terminals:
+			after 10
+			append keybuffer [read stdin]
+
+			# escape:
+			if {$keybuffer == ""} {
+				set selected -1
+				break
+			}
+			
+			# Handle up-down keys
+			if {$keybuffer == "\[A"} {
+				if {$selected > 0} {
+					incr selected -1
+				}
+			} elseif {$keybuffer == "\[B"} {
+				if {$selected < ([llength $selections]-1)} {
+					incr selected
+				}
+			}
+			drawMenu $selections $selected
+		}
+	}
+	
+	# show cursor:
+	puts -nonewline "\033\[?25h"
+	set IDX(ROWLAST) -1 ;# force redraw
+	handleRedraw
+	
+	return $selected
+}
+
 proc getInput {buffer {txt ""} {historybuffer ""}} {
 	global viewRow viewCol
 
@@ -1236,22 +1336,28 @@ uplevel 1 {
 			"OR" -
 			"\[13~" { ;# F3
 				handleSearch
-	  set found 1; break
-	}
-	"\[1;5B" { ;# ^-down arrow
-	  goToDef
-	  set found 1; break
-	}
-	"\[1;5A" { ;# ^-up arrow
-	  # Return from Def
-	  # This is basically the same as quit but
-	  # only when we come from another file.
+				set found 1; break
+			}
+			"\[1;5B" { ;# ^-down arrow
+				goToDef
+				set found 1; break
+			}
+			"\[1;5A" { ;# ^-up arrow
+			            # Return from Def
+			            # This is basically the same as quit but
+			            # only when we come from another file.
 
-	  global comeFrom
-	  if {$comeFrom != ""} {
-		saveFile
-		doExit
-	  }
+				global comeFrom
+				if {$comeFrom != ""} {
+					saveFile
+					doExit
+				}
+				set found 1; break
+			}
+			"OQ" { ;# F2 -- testing..
+				set items {{this is a test} {second item} {third item}}
+				puts -nonewline [lindex $items [selectMenu keybuffer $items]]
+				flush stdout
 				set found 1; break
 			}
 		}
@@ -1403,12 +1509,12 @@ uplevel 1 {
 	}
 	
 	# Rate limiter:
-set firstEsc [string last \u001b $keybuffer]
-if {$firstEsc == -1} {
-	set keybuffer ""
-} else {
-  set keybuffer [string range $keybuffer $firstEsc end]
-}
+	set firstEsc [string last \u001b $keybuffer]
+	if {$firstEsc == -1} {
+		set keybuffer ""
+	} else {
+		set keybuffer [string range $keybuffer $firstEsc end]
+	}
 }
 # Reset autocomplete:
 global tabCompleteWord autoCompleteMatches
