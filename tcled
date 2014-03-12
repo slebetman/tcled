@@ -657,16 +657,23 @@ proc currentWord {{mode range}} {
 # Autocomplete
 ################################
 proc scanAutoComplete {word} {
-	global BUFFER autoCompleteMatches IDX
+	global BUFFER autoCompleteMatches tags IDX
 	
 	set autoCompleteMatches ""
+	set startsWithWord "\\y$word\\w+"
+	
 	if {$word != ""} {
 		foreach line $BUFFER {
 			foreach x [
-				regexp -inline -all "\\y$word\\w+" $line
+				regexp -inline -all $startsWithWord $line
 			] {
 				lappend autoCompleteMatches $x
 			}
+		}
+		foreach x [
+			regexp -inline -all $startsWithWord [array names tags]
+		] {
+			lappend autoCompleteMatches $x
 		}
 		set autoCompleteMatches [lsort -unique $autoCompleteMatches]
 	}
