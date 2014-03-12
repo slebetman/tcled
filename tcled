@@ -315,6 +315,18 @@ proc shift {ls} {
 	return $ret
 }
 
+proc ESC {args} {return "\033[join $args {}]"}
+
+proc ESC_ {args} {ESC "\[" [join $args {}]}
+
+proc REV {args} {ESC_ 7m [join $args {}]}
+
+proc RESET {} {ESC_ 0m}
+
+proc GOTO  {row col} {ESC_ $row ";" $col H}
+
+proc WINDOW_TITLE {str} {ESC "\]0;" $str "\007"}
+
 proc readbuf {} {
 	global keybuffer
 
@@ -383,7 +395,7 @@ proc drawMenu {selections {selected ""}} {
 		set y [expr {$H-$h}]
 	}
 	goto $y $x
-	puts -nonewline "\033\[7m[string repeat { } $w]\033\[0m"
+	puts -nonewline [REV [string repeat { } $w] [RESET]]
 	incr y
 	set j 0
 	foreach i [lrange $selections 0 [expr {$h-2}]] {
@@ -400,15 +412,15 @@ proc drawMenu {selections {selected ""}} {
 			append str [string repeat { } $r]
 		}
 		if {$selected != $j} {
-			puts -nonewline "\033\[7m $str \033\[0m"
+			puts -nonewline [REV " $str " [RESET]]
 		} else {
-			puts -nonewline "\033\[7m \033\[0m$str\033\[7m \033\[0m"
+			puts -nonewline [REV " " [RESET] $str [REV " "] [RESET]]
 		}
 		incr y
 		incr j
 	}
 	goto $y $x
-	puts -nonewline "\033\[7m[string repeat { } $w]\033\[0m"
+	puts -nonewline [REV [string repeat { } $w] [RESET]]
 	flush stdout
 }
 
@@ -416,7 +428,7 @@ proc selectMenu {selections {selected -1}} {
 	global IDX keybuffer
 	
 	# hide cursor:
-	puts -nonewline "\033\[?25l"
+	puts -nonewline [ESC_ ?25l]
 	
 	drawMenu $selections $selected
 	
@@ -427,7 +439,7 @@ proc selectMenu {selections {selected -1}} {
 		}
 		if {$ch == "\u0003"} {
 			doExit
-		} elseif {$ch == "\u001b"} {
+		} elseif {$ch == [ESC]} {
 			# attempt to get all escape characters
 			# on slow connections/terminals:
 			after 10
@@ -454,7 +466,7 @@ proc selectMenu {selections {selected -1}} {
 	}
 	
 	# show cursor:
-	puts -nonewline "\033\[?25h"
+	puts -nonewline [ESC_ ?25h]
 	set IDX(ROWLAST) -1 ;# force redraw
 	handleRedraw
 	
@@ -471,7 +483,7 @@ proc getInput {{txt ""} {historybuffer ""}} {
 
 	status ""
 	goto end 1
-	puts -nonewline "\033\[7m$txt "
+	puts -nonewline [REV "$txt "]
 	flush stdout
 	set ret ""
 	while {[set ch [readbuf]] != "\n" && $ch != "\r"} {
@@ -481,7 +493,7 @@ proc getInput {{txt ""} {historybuffer ""}} {
 		}
 		if {$ch == "\u0003"} {
 			doExit
-		} elseif {$ch == "\u001b"} {
+		} elseif {$ch == [ESC]} {
 			# attempt to get all escape characters
 			# on slow connections/terminals:
 			after 10
@@ -553,7 +565,7 @@ proc status {args} {
 
 	set len $IDX(ROWCOL)
 	set str [format "%-${len}.${len}s" $statusmessage]
-	puts -nonewline "\033\[7m\u001b\[$IDX(ROWMAX);00H$str\033\[0m"
+	puts -nonewline [REV [GOTO $IDX(ROWMAX) 0] $str [RESET]]
 	goto cursor
 	#flush stdout
 }
@@ -562,14 +574,14 @@ proc idx {row col} {
 	global IDX BUFFER
 	set c $IDX(ROWCOL)
 	set r $IDX(ROWMAX)
-	set str [format " L:%-9s C:%-4d\033\[0m" "$row/[llength $BUFFER]" $col]
+	set str [format " L:%-9s C:%-4d[RESET]" "$row/[llength $BUFFER]" $col]
 	set str [string range $str 0 [expr {$IDX(ROWCOLLEN)-1}]]
 
 	# 80th column marker:
 	if {$c > 80} {
-		puts -nonewline "\033\[7m\u001b\[${r};80H|"
+		puts -nonewline [REV [GOTO $r 80] "|"]
 	}
-	puts -nonewline "\033\[7m\u001b\[${r};${c}H${str}\033\[0m"
+	puts -nonewline [REV [GOTO $r $c] $str [RESET]]
 }
 
 proc goto {row {col 1}} {
@@ -589,16 +601,16 @@ proc doGoto {row {col 1}} {
 	if {$row == "end"} {
 		set row $IDX(ROWMAX)
 	}
-	return "\u001b\[${row};${col}H"
+	return [GOTO $row $col]
 }
 
 proc clear {} {
-	puts -nonewline "\u001b\[2J"
+	puts -nonewline [ESC_ 2J]
 	flush stdout
 }
 
 proc clearline {} {
-	return "\u001b\[2K"
+	return [ESC_ 2K]
 }
 
 proc stripComments {data} {
@@ -800,14 +812,14 @@ proc syntaxHilight {line start {charmap ""}} {
 		if {$s < $prev} continue
 		append line [string range $oldline $prev [expr {$s-1}]]
 		set prev [expr {$n+1}]
-		append line "\033\[${color}m"
+		append line [ESC_ $color m]
 		append line [string range $oldline $s $n]
 		if {$n != $end} {
-			append line "\033\[0m"
+			append line [RESET]
 		}
 	}
 	append line [string range $oldline $prev end]
-	append line "\033\[0m"
+	append line [RESET]
 
 	return $line
 }
@@ -1176,7 +1188,7 @@ proc goToDef {} {
 			exec stty raw -echo  
 
 			# Set window title:
-			puts -nonewline "\033\]0;$comeFrom$filename\007"
+			puts -nonewline [WINDOW_TITLE "$comeFrom$filename"]
 
 			read stdin
 			set IDX(ROWLAST) -1 ;# force redraw
@@ -1398,22 +1410,22 @@ uplevel 1 {
 			puts $::ABOUT
 			puts "File: $filename"
 			puts "Autocomplete: $::autoCompleteMatches"
-			puts "\033\[7mUndo buffer ([llength $undoBuffer] actions):\033\[0m"
+			puts [REV "Undo buffer ([llength $undoBuffer] actions):" [RESET]]
 			if {[llength $undoBuffer] > 10} {puts ...}
 			foreach x [lrange $undoBuffer end-5 end] {
 				puts $x
 			}
-			puts "\033\[7mRedo buffer ([llength $redoBuffer] actions):\033\[0m"
+			puts [REV "Redo buffer ([llength $redoBuffer] actions):" [RESET]]
 			if {[llength $redoBuffer] > 10} {puts ...}
 			foreach x [lrange $redoBuffer end-5 end] {
 				puts $x
 			}
-			puts "\033\[7mGoto history ([llength $gotohistory]):\033\[0m"
+			puts [REV "Goto history ([llength $gotohistory]):" [RESET]]
 			if {[llength $gotohistory] > 10} {puts ...}
 			foreach x [lrange $gotohistory end-5 end] {
 			  puts $x
 			}
-			puts "\033\[7mCTags ([array size tags] tags):\033\[0m"
+			puts [REV "CTags ([array size tags] tags):" [RESET]]
 			foreach {x y} [lrange [array get tags] 0 13] {
 			  puts "$x -> [lindex $y 0]"
 			}
@@ -1423,7 +1435,7 @@ uplevel 1 {
 
 			# Wait for ESC key:
 			fconfigure stdin -blocking 1
-			while 1 {if {[read stdin 1] == "\033"} break}
+			while 1 {if {[read stdin 1] == [ESC]} break}
 			fconfigure stdin -blocking 0
 			read stdin
 			set IDX(ROWLAST) -1 ;# force redraw
@@ -1519,7 +1531,7 @@ uplevel 1 {
 	}
 	
 	# Rate limiter:
-	set firstEsc [string last \u001b $keybuffer]
+	set firstEsc [string last [ESC] $keybuffer]
 	if {$firstEsc == -1} {
 		set keybuffer ""
 	} else {
@@ -1758,7 +1770,7 @@ proc saveFile {} {
 
 			set modified 0
 			break
-		} elseif {$line == "n" || $line == "N" || $line == "\033"} {
+		} elseif {$line == "n" || $line == "N" || $line == [ESC]} {
 			status " Aborted"
 			break
 		} elseif {$line == "\u0003"} {
@@ -1868,7 +1880,7 @@ proc console_edit {fileName} {
 	fconfigure stdout -buffering full -translation crlf
 
 	# Set window title:
-	puts -nonewline "\033\]0;$comeFrom$filename\007"
+	puts -nonewline [WINDOW_TITLE $comeFrom$filename]
 
 	exec stty raw -echo
 	set err [catch edittext]
@@ -1884,7 +1896,7 @@ proc console_edit {fileName} {
 
 proc doExit {{err 0}} {
 	# Reset terminal:
-	puts -nonewline "\033c\033\[2J"
+	puts -nonewline [ESC c [ESC_ 2J]]
 	if {$err} {
 		if {[info exists $::errorInfo]} {
 			puts $::errorInfo
