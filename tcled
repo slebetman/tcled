@@ -56,7 +56,7 @@ set syntaxRules {
 	}
 
 	# C and js comments
-	{^(c|cc|cpp|h|hh|js|fe|fec|ferite|osm)$|\ynode(js)?\y} {
+	{^(c|cc|cpp|h|hh|js|fe|fec|feh|ferite|osm)$|\ynode(js)?\y} {
 		# Comments:
 		{(?:^|[^\\])//.*$} $COMMENT_FORMAT
 		
@@ -124,7 +124,7 @@ set syntaxRules {
 		{\y(null|undefined)\y} {$NUMBER_STYLE}
 	}
 	
-	{fe|fec|ferite$|osm} {
+	{fe|fec|feh|ferite$|osm} {
 		# Syntax elements:
 		{[{}\[\]();,]} {$style(dim)}
 		{[<>^~\-+*/!&|:=]} {$style(bright)}
