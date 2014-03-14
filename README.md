@@ -17,7 +17,7 @@ as close as possible to GUI text editors: ctrl-S to save files, F3 to search,
 ctrl-G to go to line etc.
 
 Another reason I wrote this was because I needed a decent editor, with syntax hilighting,
-in an environments that don't have compilers and where it's difficult or impossible to
+in environments that don't have compilers and where it's difficult or impossible to
 install binaries correctly. Cisco routers and Tivo boxes for example (in my case it was
 GreenPacket routers back when I was employed by GreenPacket to develop software for
 their routers). Fortunately these routers almost always include tcl and fortunately
@@ -29,7 +29,6 @@ Features:
 - Basic syntax highlighting. The highlighting is line based and can easily cope with Tcl style # comments but because it is line based it can't cope with multiline C style /* comments */
 - Implements search, goto and save.
 - Handles Home and End keys.
-- Changed the tab to 4 characters (can be easily modified if you prefer 8 or other values).
 - Auto resizes the editor to fit the terminal window.
 - Implements a simple auto-indenting. When inserting a newline by pressing the Enter or Return key the leading whitespace of the previous line is copied and automatically inserted.
 - Converts spaces to tabs when pasting text.
@@ -73,6 +72,7 @@ Command Line Arguments:
 - `-S filename` : Replace the current syntax rules with ones defined in the file.
 - `-f extension` : Force the syntax highlighter to use the rules for the given extension.
 - `-G line_number` : Open file and go to line.
+- `+line_number` : Shortcut for -G line_number.
 - `-F regexp` : Open file and executes a find/search.
 - `-define variable value` : Allows you to modify global variables.
 

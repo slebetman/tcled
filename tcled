@@ -1959,13 +1959,13 @@ while {[llength $cmdline]} {
 			global $var
 			set $var [shift cmdline]
 		}
-  -G {
-	lappend init_commands "handleGotoLine [shift cmdline]"
-  }
-  -F {
-	set searchpattern [shift cmdline]
-	lappend init_commands "handleSearch"
-  }
+		-G {
+			lappend init_commands "handleGotoLine [shift cmdline]"
+		}
+ 		-F {
+ 			set searchpattern [shift cmdline]
+			lappend init_commands "handleSearch"
+		}
 		--help {
 			puts "tcled: editor written in tcl"
 			puts "usage: tcled ?options? filename\n"
@@ -1975,10 +1975,17 @@ while {[llength $cmdline]} {
 			puts "  -f ext     pretend file extension is ext"
 			puts "  -r         open file as read-only"
 			puts "  -G line    go to line number"
+			puts "  +line      shortcut for -G line"
 			puts "  -F regex   find"
 			exit
 		}
-		default {lappend argv $arg}
+		default {
+			if {[regexp {^\+(\d+)$} $arg - line]} {
+				lappend init_commands "handleGotoLine $line"
+			} else {
+				lappend argv $arg
+			}
+		}
 	}
 }
 
