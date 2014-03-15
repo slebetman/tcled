@@ -305,6 +305,18 @@ if {[info commands lassign] == ""} {
 	}
 }
 
+
+###############################
+# Start Tk for clipboard
+# support if possible
+###############################
+proc clipboard {args} {}
+catch {
+package require Tk
+wm overrideredirect . 1
+wm withdraw .
+}
+
 ################################
 # Utilities
 ################################
@@ -1530,6 +1542,10 @@ uplevel 1 {
 			append keybuffer [read stdin]
 			handleEscapes
 		}
+		\u0016 { ;# ^v - paste
+			set keybuffer [clipboard get]
+			return ;# prevent rate limiter from nuking the keybuffer
+		}
 		default {
 			binary scan $char c ch
 			status "Unhandled control character:[format 0x%x $ch]"
@@ -1579,6 +1595,7 @@ proc linerange {row} {
 	}
 	append line $last
 }
+
 
 proc handleRedraw {{mode "full"}} {
 	# Valid modes are: full(default), line, edit, partial
