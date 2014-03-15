@@ -313,9 +313,9 @@ if {[info commands lassign] == ""} {
 ###############################
 proc clipboard {args} {}
 catch {
-package require Tk
-wm overrideredirect . 1
-wm withdraw .
+	package require Tk
+	wm overrideredirect . 1
+	wm withdraw .
 }
 
 ################################
@@ -547,7 +547,7 @@ proc getInput {{txt ""} {historybuffer ""}} {
 	return $ret
 }
 
-proc getCol {row bCol} {
+proc getCol {row bCol {pos "start"}} {
 	global BUFFER tabstop
 
 	set col 0
@@ -561,6 +561,12 @@ proc getCol {row bCol} {
 			incr col
 		}
 		incr i
+	}
+	if {
+		$pos != "start" &&
+		[string range [lindex $BUFFER $row] $i $i] == "\t"
+	} {
+		incr col $tabstop
 	}
 	incr col
 }
@@ -1799,7 +1805,7 @@ proc drawSelection {row line selection_range} {
 				]-1}
 			] [
 				expr {[
-					getCol $row $s_col_end
+					getCol $row $s_col_end end
 				]-1}
 			]]
 			append drawBuffer [RESET]
