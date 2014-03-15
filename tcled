@@ -450,9 +450,7 @@ proc selectMenu {selections {selected -1}} {
 			after 10
 			continue
 		}
-		if {$ch == "\u0003"} {
-			doExit
-		} elseif {$ch == [ESC]} {
+		if {$ch == [ESC]} {
 			# attempt to get all escape characters
 			# on slow connections/terminals:
 			after 10
@@ -504,9 +502,7 @@ proc getInput {{txt ""} {historybuffer ""}} {
 			after 40
 			continue
 		}
-		if {$ch == "\u0003"} {
-			doExit
-		} elseif {$ch == [ESC]} {
+		if {$ch == [ESC]} {
 			# attempt to get all escape characters
 			# on slow connections/terminals:
 			after 10
@@ -1982,8 +1978,6 @@ proc saveFile {} {
 		} elseif {$line == "n" || $line == "N" || $line == [ESC]} {
 			status " Aborted"
 			break
-		} elseif {$line == "\u0003"} {
-			doExit
 		}
 	}
 	flush stdout
