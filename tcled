@@ -1500,21 +1500,24 @@ uplevel 1 {
 			}
 			"\[1;2D" { ;# shift-left arrow
 				if {![llength $::bufSelection]} {
-					set ::bufSelection [list $bufRow $bufCol $bufRow $bufCol]
+					set ::bufSelection [list \
+						$bufRow [expr $bufCol-1] \
+						$bufRow [expr $bufCol-1]
+					]
 				}
 				if {$bufCol > 0} {
 					incr bufCol -1
 				}
-				if {
-					$bufCol != [lindex $::bufSelection 1] ||
-					$bufRow != [lindex $::bufSelection 0]
-				} {
-					lset ::bufSelection 2 $bufRow
+				lset ::bufSelection 2 $bufRow
+				
+				lassign $::bufSelection rs cs rn cn
+				if {$rn<$rs||($rs==$rn&&($cn<=$cs))} {
+					lset ::bufSelection 3 $bufCol
+				} else {
 					lset ::bufSelection 3 [expr $bufCol-1]
-					handleRedraw forced
-					set selecting 1
 				}
-				set found 1; break
+				handleRedraw forced
+				set selecting 1; set found 1; break
 			}
 		}
 	}
