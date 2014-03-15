@@ -1467,7 +1467,7 @@ uplevel 1 {
 					$bufRow != [lindex $::bufSelection 0]
 				} {
 					lset ::bufSelection 2 $bufRow
-					lset ::bufSelection 3 [expr $bufCol]
+					lset ::bufSelection 3 [expr $bufCol-1]
 					handleRedraw forced
 					set selecting 1
 				}
@@ -1745,13 +1745,23 @@ proc drawSelection {row line selection_range} {
 				append drawBuffer [ESC_ [string length $line] D]
 				# Move to start of selection:
 				if {$s_col_start > 0} {
-					append drawBuffer [ESC_ $s_col_start C]
+					append drawBuffer [
+						ESC_ [expr {[getCol $row $s_col_start]-1}] C
+					]
 				}
 			}
 			
 			# Output reverse text:
 			append drawBuffer [REV]
-			append drawBuffer [string range $line $s_col_start $s_col_end]
+			append drawBuffer [string range $line [
+				expr {[
+					getCol $row $s_col_start
+				]-1}
+			] [
+				expr {[
+					getCol $row $s_col_end
+				]-1}
+			]]
 			append drawBuffer [RESET]
 			
 			# Restore cursor:
