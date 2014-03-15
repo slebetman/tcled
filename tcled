@@ -292,6 +292,7 @@ set autoCompleteMatches ""
 set tabCompleteWord ""
 set comeFrom ""
 set keybuffer ""
+set bufSelection {}
 
 ###############################
 # Backport lassign if < 8.5
@@ -1401,6 +1402,18 @@ uplevel 1 {
 				}
 				set found 1; break
 			}
+			"\[1;2A" { ;# shift-up arrow
+				set found 1; break
+			}
+			"\[1;2B" { ;# shift-down arrow
+				set found 1; break
+			}
+			"\[1;2C" { ;# shift-right arrow
+				set found 1; break
+			}
+			"\[1;2D" { ;# shift-left arrow
+				set found 1; break
+			}
 		}
 	}
 	if {$found == 0} {
@@ -1596,11 +1609,29 @@ proc linerange {row} {
 	append line $last
 }
 
+proc selectionRange {} {
+	global bufSelection
+	
+	if {[llength $bufSelection]} {
+		lassign $bufSelection row1 col1 row2 col2
+		if {$row1 == $row2} {
+			if {$col1 > $col2} {
+				return [list $row2 $col2 $row1 $col1]
+			}
+			return [list $row1 $col1 $row2 $col2]
+		}
+		if {$row1 > $row2} {
+			return [list $row2 $col2 $row1 $col1]
+		}
+		return [list $row1 $col1 $row2 $col2]
+	}
+	return {}
+}
 
 proc handleRedraw {{mode "full"}} {
 	# Valid modes are: full(default), line, edit, partial
 
-	global IDX BUFFER tabstop viewRow viewCol bufRow bufCol
+	global IDX BUFFER tabstop viewRow viewCol bufRow bufCol bufSelection
 
 	# Buffer-up everything so we can manage outputs better:
 	set drawBuffer ""
@@ -1628,6 +1659,7 @@ proc handleRedraw {{mode "full"}} {
 			# Add display size to get end points
 			set endRow [expr {$startRow + $IDX(ROWMAX) - 1}]
 			set i 0
+			set selection_range [selectionRange]
 			for {set row $start} {$row < $endRow} {incr row} {
 				incr i
 				if {$row == $bufRow} {
@@ -1635,7 +1667,35 @@ proc handleRedraw {{mode "full"}} {
 				} else {
 					set line [linerange $row]
 					append drawBuffer [clearline]
-					append drawBuffer [syntaxHilight $line 0]
+					
+					if {[llength $selection_range]} {
+						lassign $selection_range s_row_start s_col_start s_row_end s_col_end
+						if {$s_row_start <= $row && $row <= $s_row_end} {
+							if {$row != $s_row_start} {
+								set s_col_start 0
+							}
+							if {$row != $s_row_end} {
+								set s_col_end [expr {[string length $line]-1}]
+							}
+							append drawBuffer [syntaxHilight [
+								string range $line 0 [
+									expr {$s_col_start-1}
+								]
+							] 0]
+							append drawBuffer [REV]
+							append drawBuffer [string range $line $s_col_start $s_col_end]
+							append drawBuffer [RESET]
+							append drawBuffer [syntaxHilight [
+								string range $line [
+									expr {$s_col_end+1}
+								] end
+							] 0]
+						} else {
+							append drawBuffer [syntaxHilight $line 0]
+						}
+					} else {
+						append drawBuffer [syntaxHilight $line 0]
+					}
 					append drawBuffer "\n"
 				}
 			}
@@ -1907,6 +1967,7 @@ proc console_edit {fileName} {
 	puts -nonewline [WINDOW_TITLE $comeFrom$filename]
 
 	exec stty raw -echo
+	
 	set err [catch edittext]
 	if {$err == 0} {
 		saveFile
