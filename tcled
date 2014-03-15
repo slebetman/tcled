@@ -1627,6 +1627,7 @@ uplevel 1 {
 				clipboard clear
 				clipboard append [join $copy_lines \n]
 				
+				registerUndo D $s_row_start $s_col_start [join $copy_lines \n]
 				set ::bufSelection {}
 				
 				handleRedraw forced
