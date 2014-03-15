@@ -37,6 +37,7 @@ Features:
 - Implements suspending and resuming the editing session.
 - Implements tab completion based on words already in the current document.
 - Supports CTags's tags file (if one is found) so you can look up function and variable definitions.
+- Supports X/Gnome/Windows/Mac clipboard if available (requires Tk, no Tk widgets will be created just using the cross-platform clipboard support)
 
 Usage:
 ------
@@ -46,10 +47,13 @@ Usage:
 - `Home` : Moves the cursor to the first non-whitespace character on the current line. Pressing it a second time moves the cursor to the beginning of the line.
 - `End` : Moves the cursor to the end of the line.
 - `Page Up` and `Page Down` : Moves the cursor backwards and forwards one full page at a time.
+- `Shift + Arrow keys` : Select text.
+- `Tab` while text is selected : Block indent.
+- `Shift + Tab` while text is selected : Block de-indent.
 
 Basically the usual navigation keys behaves as expected. The "^" character below denotes pressing the Ctrl key.
 - `^a` : Moves the cursor to the beginning of the line.
-- `^c` : Exits the program.
+- `^c` : Copies selected text to clipboard.
 - `^d` : Deletes the current line.
 - `^e` : Moves the cursor to the End of the line.
 - `^f` : Find/Search. The search pattern is regexp based so characters like ".", "(" and "[" needs to be escaped.
@@ -59,6 +63,8 @@ Basically the usual navigation keys behaves as expected. The "^" character below
 - `^p` : Page Down. Moves the cursor forwards one full page.
 - `^q` : Quits/Exits the program. Ask to save the file if buffer is modified.
 - `^s` : Save the file.
+- `^v` : Paste text from clipboard.
+- `^x` : Cut text to clipboard.
 - `^z` : Undo the previous edit.
 - `^y` : Redo the last undo.
 - `^w` : Suspend the session, optionally save the file and exit. The suspended session is saved to a file with a .tsuspend extension. Opening this file will resume where you left off.
