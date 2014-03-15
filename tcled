@@ -1594,7 +1594,43 @@ uplevel 1 {
 			handleRedraw line
 		}
 		\u0018 { ;# ^x - cut selection
-		
+			set selection_range [normalizeSelection]
+			if {[llength $selection_range]} {
+				lassign $selection_range \
+					s_row_start s_col_start \
+					s_row_end s_col_end
+				
+				set copy_lines [lrange $BUFFER $s_row_start $s_row_end]
+				set first_line [lindex $copy_lines 0]
+				set last_line [lindex $copy_lines end]
+				if {[llength $copy_lines] > 1} {
+					lset copy_lines 0 [
+						string range $first_line $s_col_start end
+					]
+					lset copy_lines end [
+						string range $last_line 0 $s_col_end
+					]
+				} else {
+					lset copy_lines 0 [
+						string range [
+							lindex $copy_lines 0
+						] $s_col_start $s_col_end
+					]
+				}
+				set BUFFER [lreplace $BUFFER $s_row_start $s_row_end [join [
+					list [
+						string range $first_line 0 [expr $s_col_start-1]
+					] [
+						string range $last_line [expr $s_col_end+1] end
+					]
+				] ""]]
+				clipboard clear
+				clipboard append [join $copy_lines \n]
+				
+				set ::bufSelection {}
+				
+				handleRedraw forced
+			}
 		}
 		\u0003 { ;# ^c - copy selection
 			set selection_range [normalizeSelection]
