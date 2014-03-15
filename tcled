@@ -1669,7 +1669,10 @@ proc handleRedraw {{mode "full"}} {
 					append drawBuffer [clearline]
 					
 					if {[llength $selection_range]} {
-						lassign $selection_range s_row_start s_col_start s_row_end s_col_end
+						lassign $selection_range \
+							s_row_start s_col_start \
+							s_row_end s_col_end
+						
 						if {$s_row_start <= $row && $row <= $s_row_end} {
 							if {$row != $s_row_start} {
 								set s_col_start 0
@@ -1683,7 +1686,9 @@ proc handleRedraw {{mode "full"}} {
 								]
 							] 0]
 							append drawBuffer [REV]
-							append drawBuffer [string range $line $s_col_start $s_col_end]
+							append drawBuffer [
+								string range $line $s_col_start $s_col_end
+							]
 							append drawBuffer [RESET]
 							append drawBuffer [syntaxHilight [
 								string range $line [
@@ -1994,7 +1999,8 @@ proc doExit {{err 0}} {
 }
 
 proc initSyntaxRules {fileext} {
-	global syntaxRules hilight fg bg style STRINGS NUMBERS STRING_STYLE NUMBER_STYLE COMMENT_FORMAT
+	global syntaxRules hilight fg bg style
+	global STRINGS NUMBERS STRING_STYLE NUMBER_STYLE COMMENT_FORMAT
 
 	set hilight ""
 	foreach {filepattern rule} [string map [
