@@ -940,26 +940,45 @@ proc handleInsert {} {
 	global undoBuffer redoBuffer writable
 	if {!$writable} return
 	upvar 1 printbuffer printbuffer
+	
+	set selection_range [normalizeSelection]
 
 	set line [lindex $BUFFER $bufRow]
 	if {$printbuffer == "\t"} {
-		# Tab completion:
-		if {$tabCompleteWord == ""} {
-			set tabCompleteWord [currentFragment string]
-			if {[regexp {\w+} $tabCompleteWord tabCompleteWord]} {
-				scanAutoComplete $tabCompleteWord
-			} else {
-				set tabCompleteWord ""
+		if {[llength $selection_range]} {
+			# Block indent:
+			lassign $selection_range \
+				s_row_start s_col_start \
+				s_row_end s_col_end
+				
+			lset ::bufSelection 1 0
+			lset ::bufSelection 3 [string length [lindex $BUFFER $s_row_end]]
+			
+			for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
+				lset BUFFER $row "\t[lindex $BUFFER $row]"
+				registerUndo I $row 0 $row 1
 			}
-		}
-		if {$tabCompleteWord != ""} {
-			substAutoComplete
-			autoCompleteStatus
 			return
+		} else {
+			# Tab completion:
+			if {$tabCompleteWord == ""} {
+				set tabCompleteWord [currentFragment string]
+				if {[regexp {\w+} $tabCompleteWord tabCompleteWord]} {
+					scanAutoComplete $tabCompleteWord
+				} else {
+					set tabCompleteWord ""
+				}
+			}
+			if {$tabCompleteWord != ""} {
+				substAutoComplete
+				autoCompleteStatus
+				return
+			}
 		}
 	} else {
 		set tabCompleteWord ""
 	}
+	set ::bufSelection {}
 	set oldline $line
 	set line [string range $oldline 0 [expr {$bufCol-1}]]
 	append line [getSpaces $printbuffer]
@@ -1382,6 +1401,28 @@ uplevel 1 {
 				handleSearch
 				set found 1; break
 			}
+			"\[Z" { ;# shift-tab
+				# De-indent
+				set selection_range [normalizeSelection]
+				if {[llength $selection_range]} {
+					lassign $selection_range \
+						s_row_start s_col_start \
+						s_row_end s_col_end
+					
+					lset ::bufSelection 1 0
+					lset ::bufSelection 3 [string length [lindex $BUFFER $s_row_end]]
+				
+					for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
+						set line [lindex $BUFFER $row]
+						if {[regexp {^(\s)} $line - whitespace]} {
+							lset BUFFER $row [regsub {^\s} $line {}]
+							registerUndo D $row 0 $whitespace
+						}
+					}
+					handleRedraw forced
+				}
+				set selecting 1; set found 1; break
+			}
 			"\[1;5B" { ;# ^-down arrow
 				goToDef
 				set found 1; break
@@ -1542,6 +1583,9 @@ uplevel 1 {
 		\u0001 { ;# ^a - beginning of line
 			set bufCol 0
 			handleRedraw line
+		}
+		\u0018 { ;# ^x - cut selection
+		
 		}
 		\u0003 { ;# ^c - copy selection
 			set selection_range [normalizeSelection]
@@ -1899,11 +1943,15 @@ proc edittext {} {
 			}
 			if {$printbuffer != ""} {
 				handleInsert
-				if {$prevRow != $bufRow} {
-					set prevRow $bufRow
-					handleRedraw
+				if {[llength $::bufSelection]} {
+					handleRedraw forced
+				} else {
+					if {$prevRow != $bufRow} {
+						set prevRow $bufRow
+						handleRedraw
+					}
+					handleRedraw edit
 				}
-				handleRedraw edit
 				set printbuffer ""
 			}
 			after 40
