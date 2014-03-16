@@ -39,7 +39,7 @@ set STRINGS {{(\"(?:\\"|[^"])*")|('(?:\\'|[^'])*')}}
 set STRING_STYLE "$style(bright);$fg(yellow)"
 set NUMBERS {{\y(0x[0-9a-fA-F]+|[0-9][0-9\.]*)\y}}
 set NUMBER_STYLE "$style(bright);$fg(red)"
-		
+
 set COMMENT_FORMAT {$fg(green)}
 
 set syntaxRules {
@@ -1643,6 +1643,9 @@ uplevel 1 {
 				] ""]]
 				clipboard clear
 				clipboard append [join $copy_lines \n]
+				
+				set bufRow $s_row_start
+				set bufCol $s_col_start
 				
 				registerUndo D $s_row_start $s_col_start [join $copy_lines \n]
 				set ::bufSelection {}
