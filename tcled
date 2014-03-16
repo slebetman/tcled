@@ -1295,6 +1295,73 @@ proc resume {data} {
 	return $ted
 }
 
+proc cursorDown {{mode "normal"}} {
+	global bufRow bufCol BUFFER IDX viewCol viewRow
+	
+	if {$bufRow < [expr {[llength $BUFFER] - 1}]} {
+		if {[getCol $bufRow $bufCol] > $IDX(COLMAX)} {
+			set tmp $bufCol
+			set bufCol 0
+			handleRedraw line
+			set bufCol $tmp
+		}
+		
+		incr bufRow 1
+		incr viewRow 1
+		
+		if {$mode != "normal"} {
+			set bufCol 0
+			handleRedraw line
+		}
+	}
+	endLine
+}
+
+proc cursorUp {{mode "normal"}} {
+	global bufRow bufCol BUFFER IDX viewCol viewRow
+
+	if {$bufRow > 0} {
+		if {[getCol $bufRow $bufCol] > $IDX(COLMAX)} {
+			set tmp $bufCol
+			set bufCol 0
+			handleRedraw line
+			set bufCol $tmp
+		}
+		incr bufRow -1
+		incr viewRow -1
+		
+		if {$mode != "normal"} {
+			set bufCol [string length [lindex $BUFFER $bufRow]]
+			handleRedraw line
+		}
+	}
+	endLine
+}
+
+proc cursorLeft {} {
+	global bufRow bufCol BUFFER IDX viewCol viewRow
+
+	if {$bufCol > 0} {
+		incr bufCol -1
+		return line
+	} else {
+		cursorUp continued
+		return full
+	}		
+}
+
+proc cursorRight {} {
+	global bufRow bufCol BUFFER IDX viewCol viewRow
+
+	if {$bufCol < [string length [lindex $BUFFER $bufRow]]} {
+		incr bufCol 1
+		return line
+	} else {
+		cursorDown continued
+		return full
+	}	
+}
+
 ################################
 # Key bindings
 ################################
@@ -1318,49 +1385,22 @@ uplevel 1 {
 				handleRedraw edit
 				set found 1; break
 			}
-			"\[A" { ;# Cursor Up (cuu1,up)
-				if {$bufRow > 0} {
-					if {[getCol $bufRow $bufCol] > $IDX(COLMAX)} {
-						set tmp $bufCol
-						set bufCol 0
-						handleRedraw line
-						set bufCol $tmp
-					}
-					incr bufRow -1
-					incr viewRow -1
-				}
-				endLine
+			"\[A" { ;# Cursor Up
+				cursorUp
 				handleRedraw
 				set found 1; break
 			}
 			"\[B" { ;# Cursor Down
-				if {$bufRow < [expr {[llength $BUFFER] - 1}]} {
-					if {[getCol $bufRow $bufCol] > $IDX(COLMAX)} {
-						set tmp $bufCol
-						set bufCol 0
-						handleRedraw line
-						set bufCol $tmp
-					}
-
-					incr bufRow 1
-					incr viewRow 1
-				}
-				endLine
+				cursorDown
 				handleRedraw
 				set found 1; break
 			}
-			"\[C" { ;# Cursor Right (cuf1,nd)
-				if {$bufCol < [string length [lindex $BUFFER $bufRow]]} {
-					incr bufCol 1
-				}
-				handleRedraw line
+			"\[C" { ;# Cursor Right
+				handleRedraw [cursorRight]
 				set found 1; break
 			}
 			"\[D" { ;# Cursor Left
-				if {$bufCol > 0} {
-					incr bufCol -1
-				}
-				handleRedraw line
+				handleRedraw [cursorLeft]
 				set found 1; break
 			}
 			"OH" -
@@ -1449,17 +1489,7 @@ uplevel 1 {
 				if {![llength $::bufSelection]} {
 					set ::bufSelection [list $bufRow $bufCol $bufRow $bufCol]
 				}
-				if {$bufRow > 0} {
-					if {[getCol $bufRow $bufCol] > $IDX(COLMAX)} {
-						set tmp $bufCol
-						set bufCol 0
-						handleRedraw line
-						set bufCol $tmp
-					}
-					incr bufRow -1
-					incr viewRow -1
-				}
-				endLine
+				cursorUp
 				lset ::bufSelection 2 $bufRow
 				lset ::bufSelection 3 [expr $bufCol-1]
 				handleRedraw forced
@@ -1469,18 +1499,7 @@ uplevel 1 {
 				if {![llength $::bufSelection]} {
 					set ::bufSelection [list $bufRow $bufCol $bufRow $bufCol]
 				}
-				if {$bufRow < [expr {[llength $BUFFER] - 1}]} {
-					if {[getCol $bufRow $bufCol] > $IDX(COLMAX)} {
-						set tmp $bufCol
-						set bufCol 0
-						handleRedraw line
-						set bufCol $tmp
-					}
-
-					incr bufRow 1
-					incr viewRow 1
-				}
-				endLine
+				cursorDown
 				lset ::bufSelection 2 $bufRow
 				lset ::bufSelection 3 [expr $bufCol-1]
 				handleRedraw forced
@@ -1490,9 +1509,8 @@ uplevel 1 {
 				if {![llength $::bufSelection]} {
 					set ::bufSelection [list $bufRow $bufCol $bufRow $bufCol]
 				}
-				if {$bufCol < [string length [lindex $BUFFER $bufRow]]} {
-					incr bufCol 1
-				}
+				cursorRight
+				
 				lset ::bufSelection 2 $bufRow
 				lset ::bufSelection 3 [expr $bufCol-1]
 				handleRedraw forced
@@ -1505,9 +1523,8 @@ uplevel 1 {
 						$bufRow [expr $bufCol-1]
 					]
 				}
-				if {$bufCol > 0} {
-					incr bufCol -1
-				}
+				cursorLeft
+				
 				lset ::bufSelection 2 $bufRow
 				
 				lassign $::bufSelection rs cs rn cn
