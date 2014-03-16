@@ -17,6 +17,9 @@ set tabstop 4
 set usetabs true
 # Search is case sensitive:
 set searchcase false
+# Draw tab guide (can be toggled via ^;):
+set tabGuide 0
+set tabGuideChar |
 
 ################################
 # Syntax hilighting:
@@ -359,6 +362,14 @@ proc REV {args} {ESC_ 7m [join $args {}]}
 proc RESET {} {ESC_ 0m}
 
 proc GOTO  {row col} {ESC_ $row ";" $col H}
+
+proc SAVE {} {ESC_ s}
+
+proc UNSAVE {} {ESC_ u}
+
+proc LEFT {col} {ESC_ $col D}
+
+proc RIGHT {col} {ESC_ $col C}
 
 proc WINDOW_TITLE {str} {ESC "\]0;" $str "\007"}
 
@@ -813,13 +824,8 @@ proc handleDelete {dir} {
 	return
 }
 
-proc syntaxHilight {line start {charmap ""}} {
+proc syntaxHilight {line start} {
 	global hilight IDX
-
-	set tabmap "\t"
-	if {$charmap != ""} {
-		set tabmap $charmap
-	}
 
 	set matches ""
 	set end [expr {$start+$IDX(COLMAX)-1}]
@@ -1407,6 +1413,17 @@ uplevel 1 {
 				handleRedraw edit
 				set found 1; break
 			}
+			";" { ;# toggle tab guide
+				if {$::tabGuide} {
+					set ::tabGuide 0
+					status "Tab Guide: off"
+				} else {
+					set ::tabGuide 1
+					status "Tab Guide: on"
+				}
+				handleRedraw forced
+				set found 1; break
+			}
 			"\[A" { ;# Cursor Up
 				cursorUp
 				handleRedraw
@@ -1866,16 +1883,16 @@ proc drawSelection {row line selection_range} {
 			}
 			
 			# Save cursor position:
-			append drawBuffer [ESC_ s]
+			append drawBuffer [SAVE]
 			
 			if {$row == $s_row_start || $row == $s_row_end} {
 				# Move to start of line:
-				append drawBuffer [ESC_ [string length $line] D]
+				append drawBuffer [LEFT [string length $line]]
 				# Move to start of selection:
 				if {$s_col_start > 0} {
-					append drawBuffer [
-						ESC_ [expr {[getCol $row $s_col_start]-1}] C
-					]
+					append drawBuffer [RIGHT [
+						expr {[getCol $row $s_col_start]-1}
+					]]
 				}
 			}
 			
@@ -1893,7 +1910,41 @@ proc drawSelection {row line selection_range} {
 			append drawBuffer [RESET]
 			
 			# Restore cursor:
-			append drawBuffer [ESC_ u]
+			append drawBuffer [UNSAVE]
+		}
+	}
+	return $drawBuffer
+}
+
+proc drawTabGuides {row {viewline "__NO_MATCH__"}} {
+	global BUFFER tabstop tabGuide fg style tabGuideChar
+	set drawBuffer ""
+	
+	if {$tabGuide} {
+		set partial_tabstop [expr {$tabstop-1}]
+		set line [lindex $BUFFER $row]
+		set tabmatch [regexp -inline {^\t+} $line]
+		set tabs [string length [lindex $tabmatch 0]]
+		
+		if {$tabs > 0} {
+			if {$viewline == "__NO_MATCH__"} {
+				set viewline [linerange $row]
+			}
+		
+			append drawBuffer [SAVE]
+			set viewlength [string length $viewline]
+			if {$viewlength > $tabstop} {
+				set viewlength [expr {$viewlength-$tabstop}]
+			}
+			append drawBuffer [LEFT $viewlength]
+			while {[incr tabs -1] > 0} {
+				append drawBuffer [
+					ESC_ "$fg(blue);$style(dim)m" $tabGuideChar [RESET]
+				]
+				append drawBuffer [RIGHT $partial_tabstop]
+			}
+			
+			append drawBuffer [UNSAVE]
 		}
 	}
 	return $drawBuffer
@@ -1950,6 +2001,7 @@ proc handleRedraw {{mode "full"}} {
 					append drawBuffer [syntaxHilight $line 0]
 				}
 				append drawBuffer [drawSelection $row $line $selection_range]
+				append drawBuffer [drawTabGuides $row $line]
 				append drawBuffer "\n"
 			}
 		}
@@ -1968,7 +2020,8 @@ proc handleRedraw {{mode "full"}} {
 		if {$mode != "line" || $IDX(COLLAST) != $startCol} {
 			append drawBuffer [doGoto $viewRow 1]
 			append drawBuffer [clearline]
-			append drawBuffer [syntaxHilight $line $startCol " "]
+			append drawBuffer [syntaxHilight $line $startCol]
+			append drawBuffer [drawTabGuides $row]
 			set IDX(COLLAST) $startCol
 		}
 	}
