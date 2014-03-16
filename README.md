@@ -71,6 +71,7 @@ Basically the usual navigation keys behaves as expected. The "^" character below
 - `Tab` : When typing autocompletes the current word.
 - `^Down Arrow` : Go to definition of word under cursor (if found in tags file).
 - `^Up Arrow` : Return from definition.
+- `Alt+;` : Toggle tab guides.
 
 Command Line Arguments:
 -----------------------
