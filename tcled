@@ -311,11 +311,33 @@ if {[info commands lassign] == ""} {
 # Start Tk for clipboard
 # support if possible
 ###############################
-proc clipboard {args} {}
-catch {
+if {[catch {
 	package require Tk
 	wm overrideredirect . 1
 	wm withdraw .
+}]} {
+	# Work-around clipboard if we can't load Tk.
+	# We simply save data to ~/.clipboard
+	proc clipboard {cmd {arg ""}} {
+		switch $cmd {
+			clear {
+				file delete ~/.clipboard
+			}
+			append {
+				if {![catch {open ~/.clipboard a} f]} {
+					puts -nonewline $f $arg
+					close $f
+				}
+			}
+			get {
+				if {![catch {open ~/.clipboard r} f]} {
+					set txt [read $f]
+					close $f
+					return $txt
+				}
+			}
+		}
+	}
 }
 
 ################################
