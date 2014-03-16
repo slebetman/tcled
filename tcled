@@ -1916,7 +1916,7 @@ proc drawSelection {row line selection_range} {
 	return $drawBuffer
 }
 
-proc drawTabGuides {row viewline} {
+proc drawTabGuides {row {viewline "__NO_MATCH__"}} {
 	global BUFFER tabstop tabGuide fg style tabGuideChar
 	set drawBuffer ""
 	
@@ -1927,6 +1927,10 @@ proc drawTabGuides {row viewline} {
 		set tabs [string length [lindex $tabmatch 0]]
 		
 		if {$tabs > 0} {
+			if {$viewline == "__NO_MATCH__"} {
+				set viewline [linerange $row]
+			}
+		
 			append drawBuffer [SAVE]
 			set viewlength [string length $viewline]
 			if {$viewlength > $tabstop} {
@@ -2017,7 +2021,7 @@ proc handleRedraw {{mode "full"}} {
 			append drawBuffer [doGoto $viewRow 1]
 			append drawBuffer [clearline]
 			append drawBuffer [syntaxHilight $line $startCol]
-			#append drawBuffer [drawTabGuides $row $line]
+			append drawBuffer [drawTabGuides $row]
 			set IDX(COLLAST) $startCol
 		}
 	}
