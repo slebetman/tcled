@@ -1349,7 +1349,7 @@ uplevel 1 {
 				handleRedraw
 				set found 1; break
 			}
-			"\[C" { ;# Cursor Right (cuf1,nd)
+			"\[C" { ;# Cursor Right
 				if {$bufCol < [string length [lindex $BUFFER $bufRow]]} {
 					incr bufCol 1
 				}
@@ -1359,8 +1359,17 @@ uplevel 1 {
 			"\[D" { ;# Cursor Left
 				if {$bufCol > 0} {
 					incr bufCol -1
+					handleRedraw line
+				} else {
+					if {$bufRow > 0} {
+						incr bufRow -1
+						incr viewRow -1
+						set bufCol [string length [lindex $BUFFER $bufRow]]
+						handleRedraw line
+					}
+					endLine
+					handleRedraw
 				}
-				handleRedraw line
 				set found 1; break
 			}
 			"OH" -
