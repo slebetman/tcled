@@ -1921,20 +1921,23 @@ proc drawTabGuides {row viewline} {
 	set drawBuffer ""
 	
 	if {$tabGuide} {
+		set partial_tabstop [expr {$tabstop-1}]
 		set line [lindex $BUFFER $row]
 		set tabmatch [regexp -inline {^\t+} $line]
 		set tabs [string length [lindex $tabmatch 0]]
 		
 		if {$tabs > 0} {
 			append drawBuffer [SAVE]
-			append drawBuffer [LEFT [expr {
-				[string length $viewline]-$tabstop
-			}]]
+			set viewlength [string length $viewline]
+			if {$viewlength > $tabstop} {
+				set viewlength [expr {$viewlength-$tabstop}]
+			}
+			append drawBuffer [LEFT $viewlength]
 			while {[incr tabs -1] > 0} {
 				append drawBuffer [
 					ESC_ "$fg(blue);$style(dim)m" $tabGuideChar [RESET]
 				]
-				append drawBuffer [RIGHT [expr {$tabstop-1}]]
+				append drawBuffer [RIGHT $partial_tabstop]
 			}
 			
 			append drawBuffer [UNSAVE]
@@ -2014,7 +2017,7 @@ proc handleRedraw {{mode "full"}} {
 			append drawBuffer [doGoto $viewRow 1]
 			append drawBuffer [clearline]
 			append drawBuffer [syntaxHilight $line $startCol]
-			append drawBuffer [drawTabGuides $row $line]
+			#append drawBuffer [drawTabGuides $row $line]
 			set IDX(COLLAST) $startCol
 		}
 	}
