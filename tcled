@@ -2202,24 +2202,23 @@ proc console_edit {fileName} {
 	if {$err == 0} {
 		saveFile
 	} else {
-		global errorInfo
-		puts $errorInfo
+		doExit $::errorInfo
 	}
-
-	doExit $err
+	
+	doExit
 }
 
-proc doExit {{err 0}} {
+proc doExit {{err ""}} {
 	# Reset terminal:
 	puts -nonewline [ESC c [ESC_ 2J]]
-	if {$err} {
-		if {[info exists $::errorInfo]} {
-			puts $::errorInfo
-		}
-	}
 	flush stdout
 	exec stty -raw echo
 	after 100
+	
+	if {$err != ""} {
+		puts $err
+		flush stdout
+	}
 	exit 0
 }
 
