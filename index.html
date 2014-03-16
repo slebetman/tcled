@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <title>Tcled by slebetman</title>
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <h1>Tcled</h1>
+        <h2>Pure Tcl Console Text Editor</h2>
+        <a href="https://github.com/slebetman/tcled" class="button"><small>View project on</small>GitHub</a>
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <h1>
+<a name="tcled" class="anchor" href="#tcled"><span class="octicon octicon-link"></span></a>tcled</h1>
+
+<p>Simple text editor with syntax hilighting in a single file tcl script!</p>
+
+<p>This software is released under a simple 2-clause BSD license.</p>
+
+<h2>
+<a name="pure-tcl-console-text-editor" class="anchor" href="#pure-tcl-console-text-editor"><span class="octicon octicon-link"></span></a>Pure Tcl Console Text Editor</h2>
+
+<p>This editor is based on Steve Redler's minimal console text editor
+in Tcl (<a href="http://wiki.tcl.tk/11820">http://wiki.tcl.tk/11820</a>). I took Steve's code and modified it to do
+syntax hilighting. Since then it's had enough features added to it that it is now
+good enough for me to use as my primary code editor.</p>
+
+<p>Part of the reason I wrote this is because I got tired of console text editors behaving
+very differently from regular GUI text editors. As such, this has key bindings that's
+as close as possible to GUI text editors: ctrl-S to save files, F3 to search,
+ctrl-G to go to line etc.</p>
+
+<p>Another reason I wrote this was because I needed a decent editor, with syntax hilighting,
+in environments that don't have compilers and where it's difficult or impossible to
+install binaries correctly. Cisco routers and Tivo boxes for example (in my case it was
+GreenPacket routers back when I was employed by GreenPacket to develop software for
+their routers). Fortunately these routers almost always include tcl and fortunately
+tcl is powerful enough that it's possible to write a simple text editor without any
+additional modules.</p>
+
+<h2>
+<a name="features" class="anchor" href="#features"><span class="octicon octicon-link"></span></a>Features:</h2>
+
+<ul>
+<li>Basic syntax highlighting. The highlighting is line based and can easily cope with Tcl style # comments but because it is line based it can't cope with multiline C style /* comments */</li>
+<li>Implements search, goto and save.</li>
+<li>Handles Home and End keys.</li>
+<li>Auto resizes the editor to fit the terminal window.</li>
+<li>Implements a simple auto-indenting. When inserting a newline by pressing the Enter or Return key the leading whitespace of the previous line is copied and automatically inserted.</li>
+<li>Converts spaces to tabs when pasting text.</li>
+<li>Implements key rate limiting for control characters and escape sequences. This is to improve responsiveness especially on slow machines/connections so that you don't accidentally "over-delete" when you press the delete key for too long.</li>
+<li>Implements undo and redo.</li>
+<li>Implements suspending and resuming the editing session.</li>
+<li>Implements tab completion based on words already in the current document.</li>
+<li>Supports CTags's tags file (if one is found) so you can look up function and variable definitions.</li>
+<li>Supports X/Gnome/Windows/Mac clipboard if available (requires Tk, no Tk widgets will be created just using the cross-platform clipboard support)</li>
+</ul><h2>
+<a name="usage" class="anchor" href="#usage"><span class="octicon octicon-link"></span></a>Usage:</h2>
+
+<ul>
+<li>
+<code>Arrow keys</code> : Moves the cursor around. Typing anything inserts text at the cursor.</li>
+<li>
+<code>Backspace</code> : Deletes the character before the cursor.</li>
+<li>
+<code>Delete</code> : Deletes the character behind the cursor.</li>
+<li>
+<code>Home</code> : Moves the cursor to the first non-whitespace character on the current line. Pressing it a second time moves the cursor to the beginning of the line.</li>
+<li>
+<code>End</code> : Moves the cursor to the end of the line.</li>
+<li>
+<code>Page Up</code> and <code>Page Down</code> : Moves the cursor backwards and forwards one full page at a time.</li>
+<li>
+<code>Shift + Arrow keys</code> : Select text.</li>
+<li>
+<code>Tab</code> while text is selected : Block indent.</li>
+<li>
+<code>Shift + Tab</code> while text is selected : Block de-indent.</li>
+</ul><p>Basically the usual navigation keys behaves as expected. The "^" character below denotes pressing the Ctrl key.</p>
+
+<ul>
+<li>
+<code>^a</code> : Moves the cursor to the beginning of the line.</li>
+<li>
+<code>^c</code> : Copies selected text to clipboard.</li>
+<li>
+<code>^d</code> : Deletes the current line.</li>
+<li>
+<code>^e</code> : Moves the cursor to the End of the line.</li>
+<li>
+<code>^f</code> : Find/Search. The search pattern is regexp based so characters like ".", "(" and "[" needs to be escaped.</li>
+<li>
+<code>F3</code> : Repeat the previous search.</li>
+<li>
+<code>^g</code> : Goto line number. If you type "here" as the line number you will goto the current line. Since goto keeps a history of all previous gotos the "here" index is useful for bookmarking the current line.</li>
+<li>
+<code>^o</code> : Page Up. Moves the cursor backwards one full page.</li>
+<li>
+<code>^p</code> : Page Down. Moves the cursor forwards one full page.</li>
+<li>
+<code>^q</code> : Quits/Exits the program. Ask to save the file if buffer is modified.</li>
+<li>
+<code>^s</code> : Save the file.</li>
+<li>
+<code>^v</code> : Paste text from clipboard.</li>
+<li>
+<code>^x</code> : Cut text to clipboard.</li>
+<li>
+<code>^z</code> : Undo the previous edit.</li>
+<li>
+<code>^y</code> : Redo the last undo.</li>
+<li>
+<code>^w</code> : Suspend the session, optionally save the file and exit. The suspended session is saved to a file with a .tsuspend extension. Opening this file will resume where you left off.</li>
+<li>
+<code>Tab</code> : When typing autocompletes the current word.</li>
+<li>
+<code>^Down Arrow</code> : Go to definition of word under cursor (if found in tags file).</li>
+<li>
+<code>^Up Arrow</code> : Return from definition.</li>
+</ul><h2>
+<a name="command-line-arguments" class="anchor" href="#command-line-arguments"><span class="octicon octicon-link"></span></a>Command Line Arguments:</h2>
+
+<ul>
+<li>
+<code>-s filename</code> : Append the syntax rules defined in a file to the current list of syntax rules.</li>
+<li>
+<code>-S filename</code> : Replace the current syntax rules with ones defined in the file.</li>
+<li>
+<code>-f extension</code> : Force the syntax highlighter to use the rules for the given extension.</li>
+<li>
+<code>-G line_number</code> : Open file and go to line.</li>
+<li>
+<code>+line_number</code> : Shortcut for -G line_number.</li>
+<li>
+<code>-F regexp</code> : Open file and executes a find/search.</li>
+<li>
+<code>-define variable value</code> : Allows you to modify global variables.</li>
+</ul><h2>
+<a name="code" class="anchor" href="#code"><span class="octicon octicon-link"></span></a>Code:</h2>
+
+<p>The control character and escape sequence handling have been re-written to be more
+general and to report unhandled cases. This is to make it easier to add new features
+to the code. For example, if you want to implement a feature and bind it to ^k just
+run the editor and press <code>^k</code>. It will tell you <code>"Unhandled control character:0xb"</code> 
+so that you know you should add the code as a <code>\u000b</code> case in handleControls.
+The same goes for escape sequences. For example, pressing <code>F12</code> will generate the
+message <code>"Unhandled sequence:[24~"</code></p>
+
+<h2>
+<a name="syntax-hilighting-rules" class="anchor" href="#syntax-hilighting-rules"><span class="octicon octicon-link"></span></a>Syntax Hilighting Rules:</h2>
+
+<p>The rules for syntax hilighting are currently hardcoded in the file and contained within
+the variable syntaxRules located at the top of the code. The syntax rules is in the form:</p>
+
+<pre><code>{filepattern} {{regexp} {formatting}..}
+</code></pre>
+
+<p>Comments (after #) are ignored. Syntax hilighting is line based so we can't have 
+multi-line rules like C-style comments.
+If more than one rule applies to piece of text then the most encompassing rule wins. 
+For example for the text:</p>
+
+<pre><code>"$example"
+</code></pre>
+
+<p>both the script variable (due to <code>$</code>) and the string rules <code>(".*?")</code> apply. 
+However since the string rule encompasses the script variable rule then the 
+string rule wins and the text is colored according to the string rule.</p>
+
+<p>But within each rule the opposite is true. If the regexp matches a piece of 
+text multiple times then the most specific match wins. For example for the Tcl 
+variable regexp:</p>
+
+<pre><code>{(?:set|append|incr) ([a-zA-Z_][a-zA-Z0-9_]*)}
+</code></pre>
+
+<p>the text:</p>
+
+<pre><code>set x
+</code></pre>
+
+<p>matches twice. Once for <code>set x</code> and another time for <code>x</code>. Since <code>x</code> is more specific 
+then only it will be colored by the rule. This overcomes Tcl's lack of look-behind 
+in its regexp engine.</p>
+
+<p>Formatting is defined by ANSI escape sequence. For example bright green is <code>{1;32}</code>. 
+The arrays <code>fg</code>, <code>bg</code> and <code>style</code> above makes it more convenient to define the 
+formatting. Using the previous example bright green may be written as 
+<code>{$style(bright);$fg(green)}</code>.</p>
+
+<p>Also, due to the way the renderig engine works, the syntax hilighting rules cannot 
+distinguish between tabs and spaces. So for the purpose of writing the syntax 
+regexp <code>" "</code>, <code>"\s"</code>, <code>"\t"</code> and <code>"[[:space:]]"</code> are synonymous.</p>
+        </section>
+
+        <aside id="sidebar">
+          <a href="https://github.com/slebetman/tcled/zipball/master" class="button">
+            <small>Download</small>
+            .zip file
+          </a>
+          <a href="https://github.com/slebetman/tcled/tarball/master" class="button">
+            <small>Download</small>
+            .tar.gz file
+          </a>
+
+          <p class="repo-owner"><a href="https://github.com/slebetman/tcled"></a> is maintained by <a href="https://github.com/slebetman">slebetman</a>.</p>
+
+          <p>This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the Architect theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.</p>
+        </aside>
+      </div>
+    </div>
+
+  
+  </body>
+</html>
