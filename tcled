@@ -321,7 +321,7 @@ if {[catch {
 }]} {
 	# Work-around clipboard if we can't load Tk.
 	# We simply save data to ~/.clipboard
-	proc clipboard {cmd {arg ""}} {
+	proc clipboard {cmd ignore {arg ""}} {
 		switch $cmd {
 			clear {
 				file delete ~/.clipboard
@@ -1681,7 +1681,7 @@ uplevel 1 {
 					]
 				] ""]]
 				clipboard clear
-				clipboard append [join $copy_lines \n]
+				clipboard append -- [join $copy_lines \n]
 				
 				set bufRow $s_row_start
 				set bufCol $s_col_start
@@ -1719,7 +1719,7 @@ uplevel 1 {
 					]
 				}
 				clipboard clear
-				clipboard append [join $copy_lines \n]
+				clipboard append -- [join $copy_lines \n]
 			}
 		}
 		\u0004 { ;# ^d - delete line
