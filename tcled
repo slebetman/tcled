@@ -19,7 +19,13 @@ set usetabs true
 set searchcase false
 # Draw tab guide (can be toggled via ^;):
 set tabGuide 0
-set tabGuideChar |
+if {[fconfigure stdout -encoding] == "utf-8"} {
+	# Tab guide character for utf8 capable terminals
+	set tabGuideChar \u250a
+} else {
+	# Tab guide character for plain ASCII terminals
+	set tabGuideChar |
+}
 
 ################################
 # Syntax hilighting:
