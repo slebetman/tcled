@@ -2362,6 +2362,7 @@ proc initSyntaxRules {fileext} {
 	foreach {filepattern rule} $blockCommentRules {
 		if {[regexp $filepattern $fileext]} {
 			set block_comment_symbol $rule
+			break
 		}
 	}
 }
