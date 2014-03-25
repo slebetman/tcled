@@ -144,11 +144,14 @@ set syntaxRules {
 		# Keywords:
 		{\y(closure|eval|return|super|new|for|do|monitor|handle|switch|function)\y}
 			{$style(bright);$fg(cyan)}
-		{\y(if|else|while|rename|recipient|deliver|using|arguments|global)\y}
+		{\y(if|else|while|rename|recipient|deliver|using|arguments|global|default|isa|instanceof)\y}
 			{$style(bright);$fg(cyan)}
 			
+		{\yWorkflow\.?\y}
+			{$style(bright);$fg(yellow);$bg(blue)}
+			
 		# Types:
-		{\y(string|array|number|object|void)\y}
+		{\y(string|array|number|object|void|boolean)\y}
 			{$style(dim);$fg(cyan)}
 		{\y(namespace|protocol|class|directive)\y}
 			{$style(dim);$fg(cyan)}
@@ -1905,7 +1908,7 @@ proc drawSelection {row line selection_range} {
 			}
 			
 			# Output reverse text:
-			append drawBuffer [REV]
+			append drawBuffer [ESC_ "$::bg(white);$::fg(black);$::style(bright)m"]
 			append drawBuffer [string range $line [
 				expr {[
 					getCol $row $s_col_start
