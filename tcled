@@ -1943,11 +1943,8 @@ proc drawTabGuides {row {viewline "__NO_MATCH__"}} {
 			}
 		
 			append drawBuffer [SAVE]
-			set viewlength [string length $viewline]
-			if {$viewlength > $tabstop} {
-				set viewlength [expr {$viewlength-$tabstop}]
-			}
-			append drawBuffer [LEFT $viewlength]
+			append drawBuffer "\r"
+			append drawBuffer [RIGHT $tabstop]
 			while {[incr tabs -1] > 0} {
 				append drawBuffer [
 					ESC_ "$fg(blue);$style(dim)m" $tabGuideChar [RESET]
