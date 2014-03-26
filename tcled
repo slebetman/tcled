@@ -541,6 +541,24 @@ proc selectMenu {selections {selected -1}} {
 	return $selected
 }
 
+proc getConfirmation {{txt ""}} {
+	status "$txt Y/n"
+	flush stdout
+	fconfigure stdin -blocking 1
+	while 1 {
+		set line [read stdin 1]
+		if {$line == "y" || $line == "Y" || $line == "\n"} {
+			flush stdout
+			fconfigure stdin -blocking 0
+			return 1
+		} elseif {$line == "n" || $line == "N" || $line == [ESC]} {
+			flush stdout
+			fconfigure stdin -blocking 0
+			return 0
+		}
+	}
+}
+
 proc getInput {{txt ""} {historybuffer ""}} {
 	global viewRow viewCol keybuffer
 
@@ -2239,35 +2257,25 @@ proc saveFile {} {
 
 	if {!$modified} return
 
-	status "Save '$filename'? Y/n"
-	flush stdout
-	fconfigure stdin -blocking 1
-	while 1 {
-		set line [read stdin 1]
-		if {$line == "y" || $line == "Y" || $line == "\n"} {
-			set outfile [open $filename w ]
-			fconfigure $outfile
-			for {set i 0} {$i<[expr [llength $BUFFER]-1]} {incr i} {
-				puts $outfile [lindex $BUFFER $i]
-			}
-			puts -nonewline $outfile [lindex $BUFFER end]
-			close $outfile
-			status " Saved '$filename' ([llength $BUFFER] lines)"
-
-			# Delete suspended file:
-			if {[file exists $filename.tsuspend]} {
-				file delete $filename.tsuspend
-			}
-
-			set modified 0
-			break
-		} elseif {$line == "n" || $line == "N" || $line == [ESC]} {
-			status " Aborted"
-			break
+	if {[getConfirmation "Save '$filename'?"]} {
+		set outfile [open $filename w ]
+		fconfigure $outfile
+		for {set i 0} {$i<[expr [llength $BUFFER]-1]} {incr i} {
+			puts $outfile [lindex $BUFFER $i]
 		}
+		puts -nonewline $outfile [lindex $BUFFER end]
+		close $outfile
+		status " Saved '$filename' ([llength $BUFFER] lines)"
+
+		# Delete suspended file:
+		if {[file exists $filename.tsuspend]} {
+			file delete $filename.tsuspend
+		}
+
+		set modified 0
+	} else {
+		status " Aborted"
 	}
-	flush stdout
-	fconfigure stdin -blocking 0
 }
 
 proc bufferModified {args} {
