@@ -1365,7 +1365,7 @@ proc suspend {} {
 	global searchhistory gotohistory
 	global viewRow viewCol bufRow bufCol
 	global undoBuffer redoBuffer BUFFER
-[A
+
 	# Don't save anything if BUFFER is not modified:
 	if {$modified} {
 		saveFile
