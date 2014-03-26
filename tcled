@@ -2029,7 +2029,9 @@ proc handleRedraw {{mode "full"}} {
 			append drawBuffer [doGoto $viewRow 1]
 			append drawBuffer [clearline]
 			append drawBuffer [syntaxHilight $line $startCol]
-			append drawBuffer [drawTabGuides $row]
+			if {$startCol <= 1} {
+				append drawBuffer [drawTabGuides $row]
+			}
 			set IDX(COLLAST) $startCol
 		}
 	}
