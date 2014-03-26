@@ -283,6 +283,12 @@ set syntaxRules {
 	}
 }
 
+set blockCommentRules {
+	{^(c|cc|cpp|h|hh|js|fe|fec|feh|osm)$|\ynode(js)?\y|\yferite\y} "//"
+	{^(asn|sql)$} "--"
+	{} "#"
+}
+
 ################################
 # Globals
 ################################
@@ -383,6 +389,13 @@ proc LEFT {col} {ESC_ $col D}
 proc RIGHT {col} {ESC_ $col C}
 
 proc WINDOW_TITLE {str} {ESC "\]0;" $str "\007"}
+
+proc regexpSafe {str} {
+	string map {
+		$ {\$} . {\.} * {\*} ^ {\^} ? {\?}
+		( {\(} ) {\)} \{ {\\\{} \} {\\\}}
+	} $str
+}
 
 proc readbuf {} {
 	global keybuffer
@@ -680,6 +693,12 @@ proc stripComments {data} {
 		}
 	}
 	return $ret
+}
+
+proc lineStart {line} {
+	set homeCol [regexp -indices -inline {^\s*} $line]
+	set homeCol [lindex [lindex $homeCol 0] 1]
+	incr homeCol
 }
 
 proc currentFragment {{mode range}} {
@@ -1246,11 +1265,7 @@ proc goToDef {} {
 			set command [list -G $lineNumber]
 		}
 		if {[regexp {^/\^(.+)\$/;\"$} $searchSpec - literal]} {
-			set literal [string map {
-				$ {\$} . {\.} * {\*} ^ {\^} ? {\?}
-				( {\(} ) {\)} \{ {\\\{} \} {\\\}}
-			} $literal]
-			set command [list -F "(?c)^$literal\$"]
+			set command [list -F "(?c)^[regexpSafe $literal]\$"]
 		}
 
 		if {$command != ""} {
@@ -1277,12 +1292,80 @@ proc goToDef {} {
 	}
 }
 
+proc toggleBlockComment {} {
+	global block_comment_symbol bufSelection BUFFER;
+	
+	set selection_range [normalizeSelection]
+	if {[llength $selection_range]} {
+		lassign $selection_range \
+			s_row_start s_col_start \
+			s_row_end s_col_end
+			
+		# Check if we're commenting or uncommenting:
+		set uncommenting 1
+		set re "^\\s*([regexpSafe $block_comment_symbol] )"
+		
+		for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
+			if {![regexp -- $re [lindex $BUFFER $row]]} {
+				set uncommenting 0
+				break
+			}
+		}
+		
+		if {$uncommenting} {
+			# Looks like we're uncommenting:
+			
+			for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
+				set line [lindex $BUFFER $row]
+				
+				if {[regexp -indices -- $re $line -> comment]} {
+					lassign $comment comment_s comment_n
+					lset BUFFER $row [string replace $line $comment_s $comment_n ""]
+					registerUndo D $row $comment_s "$block_comment_symbol "
+				}
+			}
+		} else {
+			# We're commenting:
+			
+			# Find smallest number of whitespace to align our comment to:
+			set comment_col infinity
+			for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
+				set line [lindex $BUFFER $row]
+				set this_col [lineStart $line]
+				if {$this_col < $comment_col} {
+					set comment_col $this_col
+				}
+			}
+			
+			set pre_comment_col [expr {$comment_col-1}]
+			for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
+				set line [lindex $BUFFER $row]
+				set line [join [list [
+					string range $line 0 $pre_comment_col
+				] "$block_comment_symbol " [
+					string range $line $comment_col end
+				]] ""]
+				lset BUFFER $row $line
+				registerUndo I $row $comment_col $row [
+					expr {$comment_col+[string length $block_comment_symbol]+1}
+				]
+			}
+		}
+		
+		lset bufSelection 1 0
+		lset bufSelection 3 [string length [lindex $BUFFER $s_row_end]]
+		
+		return 1
+	}
+	return 0
+}
+
 proc suspend {} {
 	global filename searchpattern modified
 	global searchhistory gotohistory
 	global viewRow viewCol bufRow bufCol
 	global undoBuffer redoBuffer BUFFER
-
+[A
 	# Don't save anything if BUFFER is not modified:
 	if {$modified} {
 		saveFile
@@ -1458,11 +1541,7 @@ uplevel 1 {
 			"\[7~" -
 			"\[1~" { ;# home
 				set line [lindex $BUFFER $bufRow]
-				set homeCol [regexp \
-					-indices -inline -- \
-					{^[[:space:]]*} $line]
-				set homeCol [lindex [lindex $homeCol 0] 1]
-				incr homeCol
+				set homeCol [lineStart $line]
 				if {$bufCol != $homeCol} {
 					set bufCol $homeCol
 				} else {
@@ -1515,6 +1594,13 @@ uplevel 1 {
 							registerUndo D $row 0 $whitespace
 						}
 					}
+					handleRedraw forced
+				}
+				set selecting 1; set found 1; break
+			}
+			"/" { ;# alt-/
+				# Block comment/uncomment
+				if {[toggleBlockComment]} {			
 					handleRedraw forced
 				}
 				set selecting 1; set found 1; break
@@ -2312,9 +2398,10 @@ proc doExit {{err ""}} {
 }
 
 proc initSyntaxRules {fileext} {
-	global syntaxRules hilight fg bg style
+	global syntaxRules blockCommentRules hilight block_comment_symbol fg bg style
 	global STRINGS NUMBERS STRING_STYLE NUMBER_STYLE COMMENT_FORMAT
 
+	# Initialize syntax hilighting rules
 	set hilight ""
 	foreach {filepattern rule} [string map [
 		list \
@@ -2328,6 +2415,14 @@ proc initSyntaxRules {fileext} {
 			foreach {pattern attr} $rule {
 				lappend hilight $pattern [subst $attr]
 			}
+		}
+	}
+	
+	# Set block comment style
+	foreach {filepattern rule} $blockCommentRules {
+		if {[regexp $filepattern $fileext]} {
+			set block_comment_symbol $rule
+			break
 		}
 	}
 }
