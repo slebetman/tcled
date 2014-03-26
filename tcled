@@ -1837,19 +1837,42 @@ uplevel 1 {
 				clipboard append -- [join $copy_lines \n]
 			}
 		}
-		\u0004 { ;# ^d - delete line
+		\u0004 { ;# ^d - delete line(s)
 			if {$bufRow < [llength $BUFFER] && $writable} {
-				set oldline [lindex $BUFFER $bufRow]
-				set BUFFER [lreplace $BUFFER $bufRow $bufRow]
-
-				registerUndo D $bufRow 0 "$oldline\n"
-
-				handleRedraw partial
-
-				if {$bufRow >= [llength $BUFFER] && $bufRow > 0} {
-					incr bufRow -1
-					incr viewRow -1
+				set selection_range [normalizeSelection]
+				if {[llength $selection_range]} {
+					lassign $selection_range \
+						s_row_start s_col_start \
+						s_row_end s_col_end
+						
+					set oldlines [lrange $BUFFER $s_row_start $s_row_end]
+					set BUFFER [lreplace $BUFFER $s_row_start $s_row_end]
+					
+					set bufRow $s_row_start
+					set bufCol 0
+	
+					registerUndo D $s_row_start 0 "$oldlines\n"
+	
+					if {$bufRow >= [llength $BUFFER] && $bufRow > 0} {
+						set bufRow [expr {[llength $BUFFER]-1}]
+					}
+					set viewRow $bufRow
+					set ::bufSelection {}
+					
+					handleRedraw forced
+				} else {
+					set oldline [lindex $BUFFER $bufRow]
+					set BUFFER [lreplace $BUFFER $bufRow $bufRow]
+	
+					registerUndo D $bufRow 0 "$oldline\n"
+	
 					handleRedraw partial
+	
+					if {$bufRow >= [llength $BUFFER] && $bufRow > 0} {
+						incr bufRow -1
+						incr viewRow -1
+						handleRedraw partial
+					}
 				}
 			}
 		}
