@@ -91,6 +91,7 @@ below denotes pressing the Ctrl key.
 - `^Down Arrow` : Go to definition of word under cursor (if found in tags file).
 - `^Up Arrow` : Return from definition.
 - `Alt+;` : Toggle tab guides.
+- `Alg+/` : Comment/uncomment selection
 
 Command Line Arguments:
 -----------------------
