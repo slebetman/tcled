@@ -2299,6 +2299,7 @@ proc saveFile {} {
 	} else {
 		status " Aborted"
 	}
+	flush stdout
 }
 
 proc bufferModified {args} {
