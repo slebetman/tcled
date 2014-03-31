@@ -1213,6 +1213,7 @@ proc handlePageUp {} {
 		incr viewRow -$size
 	}
 	endLine
+	uplevel 1 updateSelection
 	handleRedraw
 }
 
@@ -1227,6 +1228,7 @@ proc handlePageDown {} {
 		set bufRow	[expr {$viewRow - 1}]
 	}
 	endLine
+	uplevel 1 updateSelection
 	handleRedraw
 }
 
@@ -1502,11 +1504,26 @@ proc cursorRight {} {
 	}	
 }
 
+proc updateSelection {} {
+	global bufSelection bufRow bufCol
+	
+	if {[llength $bufSelection]} {
+		lset bufSelection 3 $bufCol
+		lset bufSelection 2 $bufRow
+		uplevel 1 {
+			set selecting 1
+		}
+		return 1
+	}
+	return 0
+}
+
 ################################
 # Key bindings
 ################################
 proc handleEscapes {} {
 uplevel 1 {
+	global bufSelection
 	set seq ""
 	set found 0
 	set selecting 0
@@ -1565,8 +1582,9 @@ uplevel 1 {
 				} else {
 					set bufCol 0
 				}
+				updateSelection
 				handleRedraw line
-				set selecting 1; set found 1; break
+				set found 1; break
 			}
 			"\[3~" { ;# delete
 				handleDelete +
@@ -1578,16 +1596,17 @@ uplevel 1 {
 			"\[8~" -
 			"\[4~" { ;# end
 				set bufCol [string length [lindex $BUFFER $bufRow]]
+				updateSelection
 				handleRedraw line
-				set selecting 1; set found 1; break
+				set found 1; break
 			}
 			"\[5~" { ;# 5 Prev screen
 				handlePageUp
-				set selecting 1; set found 1; break
+				set found 1; break
 			}
 			"\[6~" { ;# 6 Next screen
 				handlePageDown
-				set selecting 1; set found 1; break
+				set found 1; break
 			}
 			"OR" -
 			"\[13~" { ;# F3
@@ -1602,8 +1621,8 @@ uplevel 1 {
 						s_row_start s_col_start \
 						s_row_end s_col_end
 					
-					lset ::bufSelection 1 0
-					lset ::bufSelection 3 [string length [lindex $BUFFER $s_row_end]]
+					lset bufSelection 1 0
+					lset bufSelection 3 [string length [lindex $BUFFER $s_row_end]]
 				
 					for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
 						set line [lindex $BUFFER $row]
@@ -1640,52 +1659,52 @@ uplevel 1 {
 				set found 1; break
 			}
 			"\[1;2A" { ;# shift-up arrow
-				if {![llength $::bufSelection]} {
-					set ::bufSelection [list $bufRow $bufCol $bufRow $bufCol]
+				if {![llength $bufSelection]} {
+					set bufSelection [list $bufRow $bufCol $bufRow $bufCol]
 				}
 				cursorUp
-				lset ::bufSelection 2 $bufRow
-				lset ::bufSelection 3 [expr $bufCol-1]
+				lset bufSelection 2 $bufRow
+				lset bufSelection 3 [expr $bufCol-1]
 				handleRedraw forced
 				set selecting 1; set found 1; break
 			}
 			"\[1;2B" { ;# shift-down arrow
-				if {![llength $::bufSelection]} {
-					set ::bufSelection [list $bufRow $bufCol $bufRow $bufCol]
+				if {![llength $bufSelection]} {
+					set bufSelection [list $bufRow $bufCol $bufRow $bufCol]
 				}
 				cursorDown
-				lset ::bufSelection 2 $bufRow
-				lset ::bufSelection 3 [expr $bufCol-1]
+				lset bufSelection 2 $bufRow
+				lset bufSelection 3 [expr $bufCol-1]
 				handleRedraw forced
 				set selecting 1; set found 1; break
 			}
 			"\[1;2C" { ;# shift-right arrow
-				if {![llength $::bufSelection]} {
-					set ::bufSelection [list $bufRow $bufCol $bufRow $bufCol]
+				if {![llength $bufSelection]} {
+					set bufSelection [list $bufRow $bufCol $bufRow $bufCol]
 				}
 				cursorRight
 				
-				lset ::bufSelection 2 $bufRow
-				lset ::bufSelection 3 [expr $bufCol-1]
+				lset bufSelection 2 $bufRow
+				lset bufSelection 3 [expr $bufCol-1]
 				handleRedraw forced
 				set selecting 1; set found 1; break
 			}
 			"\[1;2D" { ;# shift-left arrow
-				if {![llength $::bufSelection]} {
-					set ::bufSelection [list \
+				if {![llength $bufSelection]} {
+					set bufSelection [list \
 						$bufRow [expr $bufCol-1] \
 						$bufRow [expr $bufCol-1]
 					]
 				}
 				cursorLeft
 				
-				lset ::bufSelection 2 $bufRow
+				lset bufSelection 2 $bufRow
 				
-				lassign $::bufSelection rs cs rn cn
+				lassign $bufSelection rs cs rn cn
 				if {$rn<$rs||($rs==$rn&&($cn<=$cs))} {
-					lset ::bufSelection 3 $bufCol
+					lset bufSelection 3 $bufCol
 				} else {
-					lset ::bufSelection 3 [expr $bufCol-1]
+					lset bufSelection 3 [expr $bufCol-1]
 				}
 				handleRedraw forced
 				set selecting 1; set found 1; break
@@ -1697,8 +1716,8 @@ uplevel 1 {
 		flush stdout
 	}
 	if {!$selecting} {
-		if {[llength $::bufSelection]} {
-			set ::bufSelection {}
+		if {[llength $bufSelection]} {
+			set bufSelection {}
 			handleRedraw forced
 		}
 	}
@@ -1706,7 +1725,7 @@ uplevel 1 {
 }
 
 proc handleControls {} {
-global statusmessage keybuffer
+global statusmessage keybuffer bufSelection
 set old_statusmessage $statusmessage
 uplevel 1 {
 	# Control chars start at a == \u0001 and count up.
@@ -1802,7 +1821,7 @@ uplevel 1 {
 				set bufCol $s_col_start
 				
 				registerUndo D $s_row_start $s_col_start [join $copy_lines \n]
-				set ::bufSelection {}
+				set bufSelection {}
 				
 				handleRedraw forced
 			}
@@ -1857,7 +1876,7 @@ uplevel 1 {
 						set bufRow [expr {[llength $BUFFER]-1}]
 					}
 					set viewRow $bufRow
-					set ::bufSelection {}
+					set bufSelection {}
 					
 					handleRedraw forced
 				} else {
@@ -2025,7 +2044,7 @@ proc drawSelection {row line selection_range} {
 			
 			if {$row == $s_row_start || $row == $s_row_end} {
 				# Move to start of line:
-				append drawBuffer [LEFT [string length $line]]
+				append drawBuffer "\r"
 				# Move to start of selection:
 				if {$s_col_start > 0} {
 					append drawBuffer [RIGHT [
@@ -2152,10 +2171,11 @@ proc handleRedraw {{mode "full"}} {
 		$mode == "partial"
 	} {
 		set startCol [expr {$col-$viewCol}]
-		if {$mode != "line" || $IDX(COLLAST) != $startCol} {
+		if {$mode != "line" || $IDX(COLLAST) != $startCol || [llength $selection_range]} {
 			append drawBuffer [doGoto $viewRow 1]
 			append drawBuffer [clearline]
 			append drawBuffer [syntaxHilight $line $startCol]
+			append drawBuffer [drawSelection $row $line $selection_range]
 			if {$startCol <= 1} {
 				append drawBuffer [drawTabGuides $row]
 			}
