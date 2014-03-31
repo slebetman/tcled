@@ -1566,7 +1566,7 @@ uplevel 1 {
 					set bufCol 0
 				}
 				handleRedraw line
-				set found 1; break
+				set selecting 1; set found 1; break
 			}
 			"\[3~" { ;# delete
 				handleDelete +
@@ -1579,15 +1579,15 @@ uplevel 1 {
 			"\[4~" { ;# end
 				set bufCol [string length [lindex $BUFFER $bufRow]]
 				handleRedraw line
-				set found 1; break
+				set selecting 1; set found 1; break
 			}
 			"\[5~" { ;# 5 Prev screen
 				handlePageUp
-				set found 1; break
+				set selecting 1; set found 1; break
 			}
 			"\[6~" { ;# 6 Next screen
 				handlePageDown
-				set found 1; break
+				set selecting 1; set found 1; break
 			}
 			"OR" -
 			"\[13~" { ;# F3
