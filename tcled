@@ -1816,6 +1816,7 @@ uplevel 1 {
 				] ""]]
 				clipboard clear
 				clipboard append -- [join $copy_lines \n]
+				update
 				
 				set bufRow $s_row_start
 				set bufCol $s_col_start
@@ -1854,6 +1855,7 @@ uplevel 1 {
 				}
 				clipboard clear
 				clipboard append -- [join $copy_lines \n]
+				update
 			}
 		}
 		\u0004 { ;# ^d - delete line(s)
@@ -1951,7 +1953,7 @@ uplevel 1 {
 			handleEscapes
 		}
 		\u0016 { ;# ^v - paste
-			set keybuffer [clipboard get]
+			catch {set keybuffer [clipboard get]}
 			return ;# prevent rate limiter from nuking the keybuffer
 		}
 		default {
