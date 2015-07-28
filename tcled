@@ -17,7 +17,7 @@ set tabstop 4
 set usetabs true
 # Search is case sensitive:
 set searchcase false
-# Draw tab guide (can be toggled via ^;):
+# Draw tab guide (can be toggled via alt-;):
 set tabGuide 0
 if {[fconfigure stdout -encoding] == "utf-8"} {
 	# Tab guide character for utf8 capable terminals
