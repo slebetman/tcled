@@ -1340,6 +1340,20 @@ proc goToDef {} {
 	}
 }
 
+proc handleReload {{msg "Revert unsaved changes?"}} {
+	global modified
+	if {!$modified || [getConfirmation msg]} {
+		openFile
+		set modified 0
+		set IDX(ROWLAST) -1 ;# force redraw
+		handleRedraw
+		status "Reloaded"
+	} else {
+		status "Aborted"
+	}
+	flush stdout
+}
+
 proc toggleBlockComment {} {
 	global block_comment_symbol bufSelection BUFFER bufCol bufRow;
 	
@@ -1981,18 +1995,7 @@ uplevel 1 {
 			saveFile
 		}
 		\u0012 { ;# ^r - reload
-			global modified
-			
-			if {!$modified || [getConfirmation "Revert unsaved changes?"]} {
-				openFile
-				set modified 0
-				set IDX(ROWLAST) -1 ;# force redraw
-				handleRedraw
-				status "Reloaded"
-			} else {
-				status "Aborted"
-			}
-			flush stdout
+			handleReload
 		}
 		\u0017 { ;# ^w - suspend
 			# Suspend saves the current BUFFER along with most other
@@ -2261,6 +2264,11 @@ proc handleRedraw {{mode "full"}} {
 	flush stdout
 }
 
+proc lastModified {} {
+	global filename
+	return [file mtime $filename]
+}
+
 ################################
 # main()
 ################################
@@ -2272,6 +2280,7 @@ proc edittext {} {
 	set IDX(COLLAST) -1
 	set char ""				 ; # last char received
 	set line [lindex $BUFFER $bufRow] ; # line data of current line
+	set mtime [lastModified]
 
 	handleRedraw
 	goto home; flush stdout
@@ -2311,6 +2320,12 @@ proc edittext {} {
 					handleRedraw edit
 				}
 				set printbuffer ""
+			}
+			# Check if the file on disk has changed
+			set lastModified [lastModified]
+			if {$lastModified > $mtime} {
+				set mtime $lastModified
+				handleReload
 			}
 			after 40
 			update
