@@ -79,6 +79,7 @@ below denotes pressing the Ctrl key.
 - `^o` : Page Up. Moves the cursor backwards one full page.
 - `^p` : Page Down. Moves the cursor forwards one full page.
 - `^q` : Quits/Exits the program. Ask to save the file if buffer is modified.
+- `^r` : Reloads the file from disk.
 - `^s` : Save the file.
 - `^v` : Paste text from clipboard.
 - `^x` : Cut text to clipboard.
