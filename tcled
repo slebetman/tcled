@@ -1772,9 +1772,10 @@ uplevel 1 {
 				set commandline [getInput "Exec:" exechistory]
 				historyAppend exechistory $commandline
 				
-				set pipe [open "|$commandline 2>@1"]
-				set result [read $pipe]
-				catch {close $pipe}
+				if {![catch {set pipe [open "|$commandline 2>@1"]} result]} {
+					set result [read $pipe]
+					catch {close $pipe}
+				}
 				
 				if {$result != ""} {
 					clear
