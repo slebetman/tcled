@@ -1746,6 +1746,13 @@ uplevel 1 {
 			"OQ" { ;# F2
 				global exechistory
 				set commandline [getInput "Exec:" exechistory]
+				historyAppend exechistory $commandline
+				
+				exec -ignorestderr -- {*}$commandline
+				status ""
+				handleRedraw
+				
+				set found 1; break
 			}
 		}
 	}
@@ -1973,6 +1980,20 @@ uplevel 1 {
 		}
 		\u0013 { ;# ^s - save file
 			saveFile
+		}
+		\u0012 { ;# ^r - reload
+			global modified
+			
+			if {!$modified || [getConfirmation "Revert unsaved changes?"]} {
+				openFile
+				set modified 0
+				set IDX(ROWLAST) -1 ;# force redraw
+				handleRedraw
+				status "Reloaded"
+			} else {
+				status "Aborted"
+			}
+			flush stdout
 		}
 		\u0017 { ;# ^w - suspend
 			# Suspend saves the current BUFFER along with most other
@@ -2335,6 +2356,45 @@ proc getRowColMax {} {
 	}
 }
 
+proc openFile {} {
+	global BUFFER filename writable
+
+	if {[file isfile $filename]} {
+		if {[file readable $filename]} {
+			set mode ""
+			set f [open $filename r]
+			fconfigure $f
+			set data [read $f]
+			if {[file extension $filename] == ".tsuspend"} {
+				set mode [resume $data]
+				set filename [file rootname $filename]
+			}
+			if {$mode != "suspend"} {
+				set BUFFER [split $data "\n"]
+			}
+			close $f
+			if {[file writable $filename] == 0} {
+				set writable 0
+			}
+			set openMode ""
+			if {$mode == "suspend"} {
+				set openMode " RESUMED"
+			}
+			if {$writable} {
+				status "Opened: $filename$openMode"
+			} else {
+				status "Opened: $filename$openMode, READ ONLY!"
+			}
+			loadTags [file normalize $filename]
+		} else {
+			puts "Can't read file: \"$filename\""
+			exit
+		}
+		return 1
+	}
+	return 0
+}
+
 proc saveFile {} {
 	global filename BUFFER modified
 
@@ -2413,35 +2473,8 @@ proc console_edit {fileName} {
 
 	getRowColMax
 
-	if {[file isfile $fileName]} {
-		if {[file readable $fileName]} {
-			set mode ""
-			set f [open $fileName r]
-			fconfigure $f
-			set data [read $f]
-			if {[file extension $fileName] == ".tsuspend"} {
-				set mode [resume $data]
-			}
-			if {$mode != "suspend"} {
-				set BUFFER [split $data "\n"]
-			} else {
-				set fileName "$filename RESUMED"
-			}
-			close $f
-			if {[file writable $filename] == 0} {
-				set writable 0
-			}
-			if {$writable} {
-				status "Opened: $fileName"
-			} else {
-				status "Opened: $fileName, READ ONLY!"
-			}
-			loadTags [file normalize $fileName]
-		} else {
-			puts "Can't read file: \"$fileName\""
-			exit
-		}
-	} else {
+	
+	if {![openFile]} {
 		status "New file: $fileName"
 	}
 
