@@ -1354,7 +1354,7 @@ proc goToDef {} {
 
 proc handleReload {{msg "Revert unsaved changes?"}} {
 	global modified
-	if {!$modified || [getConfirmation msg]} {
+	if {!$modified || [getConfirmation $msg]} {
 		openFile
 		set modified 0
 		handleRedraw forced
@@ -1770,23 +1770,24 @@ uplevel 1 {
 			"OQ" { ;# F2
 				global exechistory
 				set commandline [getInput "Exec:" exechistory]
-				historyAppend exechistory $commandline
-				
-				if {![catch {set pipe [open "|$commandline 2>@1"]} result]} {
-					set result [read $pipe]
-					catch {close $pipe}
+				if {$commandline != ""} {
+					historyAppend exechistory $commandline
+					
+					if {![catch {set pipe [open "|$commandline 2>@1"]} result]} {
+						set result [read $pipe]
+						catch {close $pipe}
+					}
+					
+					if {$result != ""} {
+						clear
+						goto home
+						puts $result
+						waitForESC
+					}
+					
+					status ""
+					handleRedraw forced
 				}
-				
-				if {$result != ""} {
-					clear
-					goto home
-					puts $result
-					waitForESC
-				}
-				
-				status ""
-				handleRedraw forced
-				
 				set found 1; break
 			}
 		}
@@ -2342,7 +2343,7 @@ proc edittext {} {
 			set lastModified [lastModified]
 			if {$lastModified > $mtime} {
 				set mtime $lastModified
-				handleReload
+				handleReload "File on disk has changed. Discard unsaved changes and reload?"
 			}
 			after 40
 			update
