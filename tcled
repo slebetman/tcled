@@ -1426,7 +1426,6 @@ proc suspend {} {
 		set suspendFile $filename.tsuspend
 
 		set f [open $suspendFile w+]
-		fconfigure $f
 		puts $f "ted suspend"
 		foreach x {
 			filename
@@ -2363,7 +2362,6 @@ proc openFile {} {
 		if {[file readable $filename]} {
 			set mode ""
 			set f [open $filename r]
-			fconfigure $f
 			set data [read $f]
 			if {[file extension $filename] == ".tsuspend"} {
 				set mode [resume $data]
@@ -2402,7 +2400,6 @@ proc saveFile {} {
 
 	if {[getConfirmation "Save '$filename'?"]} {
 		set outfile [open $filename w ]
-		fconfigure $outfile
 		for {set i 0} {$i<[expr [llength $BUFFER]-1]} {incr i} {
 			puts $outfile [lindex $BUFFER $i]
 		}
