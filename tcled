@@ -65,7 +65,7 @@ set syntaxRules {
 	}
 
 	# C and js comments
-	{^(c|cc|cpp|h|hh|js|fe|fec|feh|osm)$|\ynode(js)?\y|\yferite\y} {
+	{^(c|cc|cpp|h|hh|js|fe|fec|feh|osm|go)$|\ynode(js)?\y|\yferite\y} {
 		# Comments:
 		{(?:^|[^\\])//.*$} $COMMENT_FORMAT
 		
@@ -77,6 +77,8 @@ set syntaxRules {
 		{^\s*\*\s.*$} $COMMENT_FORMAT
 		# ... */
 		{^[^(?!/\*)]*\*/} $COMMENT_FORMAT
+		
+		{/\*.*} $COMMENT_FORMAT
 	}
 
 	# C
@@ -105,6 +107,27 @@ set syntaxRules {
 		{\yR[A-Z][0-8]\y} {$style(bright);$fg(red)}
 	}
 	
+	# go
+	{go$} {
+		# Keywords:
+		{\y(break|default|func|interface|select|case|defer|go|map|struct)\y}
+			{$fg(cyan)}
+		{\y(chan|else|goto|package|switch|const|fallthrough|if|range)\y}
+			{$fg(cyan)}
+		{\y(type|continue|for|import|return|var)\y}
+			{$fg(cyan)}
+		
+		# Built-in types:
+		{\y(u?int(?:8|16|32|64)?|float(?:32|64)|complex(?:64|128))\y}
+			{$style(bright);$fg(magenta)}
+		{\y(byte|rune|uintptr|string|boolean)\y}
+			{$style(bright);$fg(magenta)}
+		
+		
+		# Treat true, false etc. like numbers:
+		{\y(iota|true|false|nil)\y} {$NUMBER_STYLE}
+	}
+	
 	# js
 	{js$|\ynode\y} {
 		# Keywords:
@@ -125,19 +148,17 @@ set syntaxRules {
 		{\y(super|synchronized|throws|transient|volatile)\y}
 			{$fg(red)}
 			
-		# Syntax elements:
-		{[{}\[\]();,]} {$style(dim)}
-		{[<>^~\-+*/!&|:=]} {$style(bright)}
-		
 		# Treat null and undefined like numbers:
 		{\y(null|undefined)\y} {$NUMBER_STYLE}
 	}
 	
-	{fe|fec|feh|ferite|osm} {
+	{js$|\ynode\y|go$|fe|fec|feh|ferite|osm} {
 		# Syntax elements:
 		{[{}\[\]();,]} {$style(dim)}
 		{[<>^~\-+*/!&|:=]} {$style(bright)}
-		
+	}
+	
+	{fe|fec|feh|ferite|osm} {
 		# Treat null, true and false like numbers:
 		{\y(null|true|false)\y} {$NUMBER_STYLE}
 		
@@ -180,6 +201,12 @@ set syntaxRules {
 		
 		# Macro variables
 		{(?i)\$[\w\:\$]*} {$style(bright);$fg(cyan)}
+		
+		# Basic macros
+		{routine|saveret|return|goto|call|ifTRUE|ifFALSE|ifCARRY|ifBORROW}
+			{$style(bright);$fg(blue)}
+		{memset|getArray|setArray}
+			{$style(bright);$fg(blue)}
 		
 		# Labels
 		{:\w+} {$style(bright);$fg(yellow)}
@@ -284,7 +311,7 @@ set syntaxRules {
 }
 
 set blockCommentRules {
-	{^(c|cc|cpp|h|hh|js|fe|fec|feh|osm)$|\ynode(js)?\y|\yferite\y} "//"
+	{^(c|cc|cpp|h|hh|js|fe|fec|feh|osm|go)$|\ynode(js)?\y|\yferite\y} "//"
 	{^(asn|sql)$} "--"
 	{} "#"
 }
@@ -296,6 +323,7 @@ set filename ""
 set fileext ""
 set searchpattern ""
 set searchhistory ""
+set exechistory ""
 set gotohistory ""
 set statusmessage ""
 set modified 0
@@ -336,7 +364,7 @@ if {[catch {
 }]} {
 	# Work-around clipboard if we can't load Tk.
 	# We simply save data to ~/.clipboard
-	proc clipboard {cmd ignore {arg ""}} {
+	proc clipboard {cmd {ignore ""} {arg ""}} {
 		switch $cmd {
 			clear {
 				file delete ~/.clipboard
@@ -1714,6 +1742,10 @@ uplevel 1 {
 				}
 				handleRedraw forced
 				set selecting 1; set found 1; break
+			}
+			"OQ" { ;# F2
+				global exechistory
+				set commandline [getInput "Exec:" exechistory]
 			}
 		}
 	}
