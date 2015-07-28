@@ -339,6 +339,7 @@ set tabCompleteWord ""
 set comeFrom ""
 set keybuffer ""
 set bufSelection {}
+set mtime 0
 
 ###############################
 # Backport lassign if < 8.5
@@ -567,6 +568,17 @@ proc selectMenu {selections {selected -1}} {
 	handleRedraw
 	
 	return $selected
+}
+
+proc waitForESC {} {
+	status "Press ESC to exit this screen"
+	flush stdout
+
+	# Wait for ESC key:
+	fconfigure stdin -blocking 1
+	while 1 {if {[read stdin 1] == [ESC]} break}
+	fconfigure stdin -blocking 0
+	read stdin
 }
 
 proc getConfirmation {{txt ""}} {
@@ -1345,8 +1357,7 @@ proc handleReload {{msg "Revert unsaved changes?"}} {
 	if {!$modified || [getConfirmation msg]} {
 		openFile
 		set modified 0
-		set IDX(ROWLAST) -1 ;# force redraw
-		handleRedraw
+		handleRedraw forced
 		status "Reloaded"
 	} else {
 		status "Aborted"
@@ -1761,9 +1772,19 @@ uplevel 1 {
 				set commandline [getInput "Exec:" exechistory]
 				historyAppend exechistory $commandline
 				
-				exec -ignorestderr -- {*}$commandline
+				set pipe [open "|$commandline 2>@1"]
+				set result [read $pipe]
+				catch {close $pipe}
+				
+				if {$result != ""} {
+					clear
+					goto home
+					puts $result
+					waitForESC
+				}
+				
 				status ""
-				handleRedraw
+				handleRedraw forced
 				
 				set found 1; break
 			}
@@ -1821,15 +1842,10 @@ uplevel 1 {
 			foreach {x y} [lrange [array get tags] 0 13] {
 			  puts "$x -> [lindex $y 0]"
 			}
-			status "Press ESC to exit this screen"
 			idx $viewRow $viewCol
-			flush stdout
+			
+			waitForESC
 
-			# Wait for ESC key:
-			fconfigure stdin -blocking 1
-			while 1 {if {[read stdin 1] == [ESC]} break}
-			fconfigure stdin -blocking 0
-			read stdin
 			set IDX(ROWLAST) -1 ;# force redraw
 			status ""
 			handleRedraw
@@ -2274,7 +2290,7 @@ proc lastModified {} {
 ################################
 proc edittext {} {
 	global BUFFER IDX viewRow viewCol bufRow bufCol writable tabCompleteWord
-	global init_commands keybuffer
+	global init_commands keybuffer mtime
 
 	set IDX(ROWLAST) -1 ; # last row most recently displayed in view
 	set IDX(COLLAST) -1
@@ -2409,7 +2425,7 @@ proc openFile {} {
 }
 
 proc saveFile {} {
-	global filename BUFFER modified
+	global filename BUFFER modified mtime
 
 	if {!$modified} return
 
@@ -2426,7 +2442,8 @@ proc saveFile {} {
 		if {[file exists $filename.tsuspend]} {
 			file delete $filename.tsuspend
 		}
-
+		
+		set mtime [lastModified]
 		set modified 0
 	} else {
 		status " Aborted"
