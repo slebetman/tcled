@@ -689,17 +689,27 @@ proc getCol {row bCol {pos "start"}} {
 	incr col
 }
 
+proc drawStatus {txt {offset 0}} {
+	global IDX
+
+	if {$offset == 0} {
+		set len $IDX(ROWCOL)
+	} else {
+		set len $IDX(COLMAX)
+	}
+	set str [format "%-${len}.${len}s" $txt]
+	puts -nonewline [REV [GOTO [expr {$IDX(ROWMAX)-$offset}] 0] $str [RESET]]
+	goto cursor
+}
+
 proc status {args} {
 	global IDX statusmessage
 
 	if {[llength $args] != 0} {
 		set statusmessage [join $args " "]
 	}
-
-	set len $IDX(ROWCOL)
-	set str [format "%-${len}.${len}s" $statusmessage]
-	puts -nonewline [REV [GOTO $IDX(ROWMAX) 0] $str [RESET]]
-	goto cursor
+	
+	drawStatus $statusmessage
 }
 
 proc idx {row col} {
@@ -1805,7 +1815,9 @@ uplevel 1 {
 				set selecting 1; set found 1; break
 			}
 			"OQ" { ;# F2
-				global exechistory execShell
+				global exechistory execShell filename env
+				
+				drawStatus {Special exported variables: $f=this file, $s=selected text, $c=clipboard} 1
 				set commandline [getInput "Exec:" exechistory]
 				if {$commandline != ""} {
 					historyAppend exechistory $commandline
@@ -1813,6 +1825,11 @@ uplevel 1 {
 					if {$execShell != ""} {
 						set commandline [list $execShell << $commandline]
 					}
+					
+					# Set special variables:
+					set env(f) $filename
+					set env(s) [getSelectionText]
+					set env(c) [clipboard get]
 					
 					if {![catch {set pipe [open "|$commandline 2>@1"]} result]} {
 						set result [read $pipe]
@@ -1825,10 +1842,9 @@ uplevel 1 {
 						puts $result
 						waitForESC
 					}
-					
-					status ""
-					handleRedraw forced
 				}
+				status ""
+				handleRedraw forced
 				set found 1; break
 			}
 		}
