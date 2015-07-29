@@ -93,6 +93,7 @@ below denotes pressing the Ctrl key.
 - `^Up Arrow` : Return from definition.
 - `Alt+;` : Toggle tab guides.
 - `Alg+/` : Comment/uncomment selection
+- `F2` : Execute a shell command
 
 Command Line Arguments:
 -----------------------
