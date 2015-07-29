@@ -13,7 +13,7 @@ Copyright (c) 2013 Adly Abdulah
 ################################
 # Shell to use for exec (F2).
 # Set to empty string to exec directly without a shell:
-set execShell "/bin/sh"
+set execShell $env(SHELL)
 # How many spaces each tab character takes:
 set tabstop 4
 # Substitute spaces to tabs on newline and pasting:
