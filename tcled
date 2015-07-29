@@ -665,7 +665,6 @@ proc getInput {{txt ""} {historybuffer ""}} {
 				
 				if {$hidx >= 0} {
 					set ret [lindex $hist end-$hidx]
-					
 				} else {
 					set ret ""
 				}
@@ -1846,7 +1845,7 @@ uplevel 1 {
 				set selecting 1; set found 1; break
 			}
 			"OQ" { ;# F2
-				global exechistory execShell filename env
+				global exechistory execShell filename env IDX
 				
 				drawStatus {Special exported variables: $f=this file, $s=selected text, $c=clipboard} 1
 				set commandline [getInput "Exec:" exechistory]
@@ -1870,7 +1869,7 @@ uplevel 1 {
 					if {$result != ""} {
 						clear
 						goto home
-						puts $result
+						puts [join [lrange [split $result \n] 0 [expr $IDX(ROWMAX)-2]] \n]
 						waitForESC
 					}
 				}
