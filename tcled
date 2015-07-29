@@ -440,6 +440,10 @@ proc readbuf {} {
 	return $ret
 }
 
+proc stringInsert {txt idx str} {
+	return [string range $txt 0 [expr $idx-1]]$str[string range $txt [expr $idx] end]
+}
+
 proc endLine {} {
 	global BUFFER bufRow bufCol
 	set x [string length [lindex $BUFFER $bufRow]]
@@ -458,10 +462,14 @@ proc getSpaces {line} {
 	}
 }
 
-proc inputStat {txt ret} {
+proc inputStat {txt ret {len ""}} {
 	global IDX
 	set stat [string range "$txt $ret" 0 [expr {$IDX(ROWCOL)-1}]]
-	set len [expr [string length $stat]+1]
+	if {$len == ""} {
+		set len [expr [string length $stat]+1]
+	} else {
+		set len [expr {$len + [string length "$txt  "]}]
+	}
 	status $stat
 	goto end $len
 	flush stdout
@@ -615,6 +623,7 @@ proc getInput {{txt ""} {historybuffer ""}} {
 	puts -nonewline [REV "$txt "]
 	flush stdout
 	set ret ""
+	set inputCursor 0
 	while {[set ch [readbuf]] != "\n" && $ch != "\r"} {
 		if {$ch == ""} {
 			after 40
@@ -631,9 +640,19 @@ proc getInput {{txt ""} {historybuffer ""}} {
 				status ""
 				return
 			}
-
-			# handle history if given
-			if {$historybuffer != ""} {
+			
+			if {$keybuffer == "\[C"} { ;# Cursor Right
+				if {$inputCursor < [string length $ret]} {
+					incr inputCursor
+					inputStat $txt $ret $inputCursor
+				}
+			} elseif {$keybuffer == "\[D"} { ;# Cursor Left
+				if {$inputCursor > 0} {
+					incr inputCursor -1
+					inputStat $txt $ret $inputCursor
+				}
+			} elseif {$historybuffer != ""} {
+				# handle history if given:
 				if {$keybuffer == "\[A"} {
 					if {$hidx < ([llength $hist]-1)} {
 						incr hidx
@@ -643,12 +662,15 @@ proc getInput {{txt ""} {historybuffer ""}} {
 						incr hidx -1
 					}
 				}
+				
 				if {$hidx >= 0} {
 					set ret [lindex $hist end-$hidx]
+					
 				} else {
 					set ret ""
 				}
-				inputStat $txt $ret
+				set inputCursor [string length $ret]
+				inputStat $txt $ret $inputCursor
 			}
 
 			# need to ignore escapes sequences:
@@ -656,11 +678,20 @@ proc getInput {{txt ""} {historybuffer ""}} {
 			continue
 		} elseif {$ch == "\u007f" || $ch == "\u0008"} {
 			# handle backspace:
-			set ret [string range $ret 0 end-1]
+			set ret [
+				string range $ret 0 [expr $inputCursor-2]
+			][
+				string range $ret $inputCursor end
+			]
+			if {$inputCursor > 0} {
+				incr inputCursor -1
+			}
 		} elseif {[string is print $ch]} {
-			append ret $ch
+			set ret [stringInsert $ret $inputCursor $ch]
+			incr inputCursor
+			# append ret $ch
 		}
-		inputStat $txt $ret
+		inputStat $txt $ret $inputCursor
 	}
 	return $ret
 }
@@ -1114,11 +1145,11 @@ proc handleInsert {} {
 		set tabCompleteWord ""
 	}
 	set ::bufSelection {}
-	set oldline $line
-	set line [string range $oldline 0 [expr {$bufCol-1}]]
-	append line [getSpaces $printbuffer]
-	append line [string trimleft $printbuffer]
-	append line [string range $oldline $bufCol end]
+
+	set newstring [getSpaces $printbuffer][string trimleft $printbuffer]
+
+	set line [stringInsert $line $bufCol $newstring]
+
 	set BUFFER [lreplace $BUFFER $bufRow $bufRow $line]
 	set len [string length $printbuffer]
 	set col $bufCol
