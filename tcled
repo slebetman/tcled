@@ -11,6 +11,9 @@ Copyright (c) 2013 Adly Abdulah
 ################################
 # Preferences:
 ################################
+# Shell to use for exec (F2).
+# Set to empty string to exec directly without a shell:
+set execShell "/bin/sh"
 # How many spaces each tab character takes:
 set tabstop 4
 # Substitute spaces to tabs on newline and pasting:
@@ -1365,6 +1368,40 @@ proc handleReload {{msg "Revert unsaved changes?"}} {
 	flush stdout
 }
 
+proc getSelectionText {} {
+	global BUFFER
+	
+	set copy_lines {}
+	set selection_range [normalizeSelection]
+	
+	if {[llength $selection_range]} {
+		lassign $selection_range \
+			s_row_start s_col_start \
+			s_row_end s_col_end
+		
+		set copy_lines [lrange $BUFFER $s_row_start $s_row_end]
+		if {[llength $copy_lines] > 1} {
+			lset copy_lines 0 [
+				string range [
+					lindex $copy_lines 0
+				] $s_col_start end
+			]
+			lset copy_lines end [
+				string range [
+					lindex $copy_lines end
+				] 0 $s_col_end
+			]
+		} else {
+			lset copy_lines 0 [
+				string range [
+					lindex $copy_lines 0
+				] $s_col_start $s_col_end
+			]
+		}
+	}
+	return [join $copy_lines \n]
+}
+
 proc toggleBlockComment {} {
 	global block_comment_symbol bufSelection BUFFER bufCol bufRow;
 	
@@ -1768,10 +1805,14 @@ uplevel 1 {
 				set selecting 1; set found 1; break
 			}
 			"OQ" { ;# F2
-				global exechistory
+				global exechistory execShell
 				set commandline [getInput "Exec:" exechistory]
 				if {$commandline != ""} {
 					historyAppend exechistory $commandline
+					
+					if {$execShell != ""} {
+						set commandline [list $execShell << $commandline]
+					}
 					
 					if {![catch {set pipe [open "|$commandline 2>@1"]} result]} {
 						set result [read $pipe]
@@ -1904,33 +1945,10 @@ uplevel 1 {
 			}
 		}
 		\u0003 { ;# ^c - copy selection
-			set selection_range [normalizeSelection]
-			if {[llength $selection_range]} {
-				lassign $selection_range \
-					s_row_start s_col_start \
-					s_row_end s_col_end
-				
-				set copy_lines [lrange $BUFFER $s_row_start $s_row_end]
-				if {[llength $copy_lines] > 1} {
-					lset copy_lines 0 [
-						string range [
-							lindex $copy_lines 0
-						] $s_col_start end
-					]
-					lset copy_lines end [
-						string range [
-							lindex $copy_lines end
-						] 0 $s_col_end
-					]
-				} else {
-					lset copy_lines 0 [
-						string range [
-							lindex $copy_lines 0
-						] $s_col_start $s_col_end
-					]
-				}
+			set copy_lines [getSelectionText]
+			if {$copy_lines != ""} {
 				clipboard clear
-				clipboard append -- [join $copy_lines \n]
+				clipboard append -- $copy_lines
 				update
 			}
 		}
