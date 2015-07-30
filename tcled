@@ -592,20 +592,39 @@ proc waitForESC {} {
 	read stdin
 }
 
-proc getConfirmation {{txt ""}} {
-	status "$txt Y/n"
+proc getConfirmation {{txt ""} {opts {}}} {
+	if {[llength $opts]} {
+		status "$txt [join $opts /]"
+	} else {
+		status "$txt Y/n"
+	}
 	flush stdout
 	fconfigure stdin -blocking 1
 	while 1 {
 		set line [read stdin 1]
-		if {$line == "y" || $line == "Y" || $line == "\n"} {
-			flush stdout
-			fconfigure stdin -blocking 0
-			return 1
-		} elseif {$line == "n" || $line == "N" || $line == [ESC]} {
-			flush stdout
-			fconfigure stdin -blocking 0
-			return 0
+		if {[llength $opts]} {
+			foreach o $opts {
+				if {[string tolower $line] == [string tolower $o]} {
+					flush stdout
+					fconfigure stdin -blocking 0
+					return $o
+				}
+			}
+			if {$line == [ESC]} {
+				flush stdout
+				fconfigure stdin -blocking 0
+				return ""
+			}
+		} else {
+			if {$line == "y" || $line == "Y" || $line == "\n"} {
+				flush stdout
+				fconfigure stdin -blocking 0
+				return 1
+			} elseif {$line == "n" || $line == "N" || $line == [ESC]} {
+				flush stdout
+				fconfigure stdin -blocking 0
+				return 0
+			}
 		}
 	}
 }
@@ -1845,7 +1864,7 @@ uplevel 1 {
 				set selecting 1; set found 1; break
 			}
 			"OQ" { ;# F2
-				global exechistory execShell filename env IDX
+				global exechistory execShell filename env IDX keybuffer
 				
 				drawStatus {Special exported variables: $f=this file, $s=selected text, $c=clipboard} 1
 				set commandline [getInput "Exec:" exechistory]
@@ -1869,8 +1888,20 @@ uplevel 1 {
 					if {$result != ""} {
 						clear
 						goto home
-						puts [join [lrange [split $result \n] 0 [expr $IDX(ROWMAX)-2]] \n]
-						waitForESC
+						puts -nonewline [join [lrange [split $result \n] 0 [expr $IDX(ROWMAX)-1]] \n]
+						drawStatus "Press ESC to exit this screen" 1
+						if {[set op [getConfirmation {[C]opy to clipboard or [I]nsert to document?} {c i}]] != ""} {
+							switch $op {
+								c - C {
+									clipboard clear
+									clipboard append -- $result
+								}
+								i - I {
+									set keybuffer [string trim $result]
+									return 1
+								}
+							}
+						}
 					}
 				}
 				status ""
@@ -1890,6 +1921,7 @@ uplevel 1 {
 		}
 	}
 }
+return 0
 }
 
 proc handleControls {} {
@@ -2093,7 +2125,7 @@ uplevel 1 {
 		\u001b { ;# ESC - handle escape sequences
 			after 10
 			append keybuffer [read stdin]
-			handleEscapes
+			if {[handleEscapes]} return
 		}
 		\u0016 { ;# ^v - paste
 			catch {set keybuffer [clipboard get]}
