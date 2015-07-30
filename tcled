@@ -1898,6 +1898,7 @@ uplevel 1 {
 								}
 								i - I {
 									set keybuffer [string trim $result]
+									handleRedraw forced
 									return 1
 								}
 							}
