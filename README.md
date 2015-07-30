@@ -47,6 +47,9 @@ Features:
   variable definitions.
 - Supports X/Gnome/Windows/Mac clipboard if available (requires Tk, no Tk
   widgets will be created just using the cross-platform clipboard support)
+- Supports executing shell commands (see documentation for F2 below). The result
+  of the shell command can then either be inserted directly into the document
+  or copied to the clipboard. With this feature your OS is your IDE!
 
 Usage:
 ------
@@ -66,13 +69,13 @@ Usage:
 
 Basically the usual navigation keys behaves as expected. The "^" character
 below denotes pressing the Ctrl key.
+
 - `^a` : Moves the cursor to the beginning of the line.
 - `^c` : Copies selected text to clipboard.
 - `^d` : Deletes the current line.
 - `^e` : Moves the cursor to the End of the line.
 - `^f` : Find/Search. The search pattern is regexp based so characters like
   ".", "(" and "[" needs to be escaped.
-- `F3` : Repeat the previous search.
 - `^g` : Goto line number. If you type "here" as the line number you will goto
   the current line. Since goto keeps a history of all previous gotos the "here"
   index is useful for bookmarking the current line.
@@ -82,18 +85,20 @@ below denotes pressing the Ctrl key.
 - `^r` : Reloads the file from disk.
 - `^s` : Save the file.
 - `^v` : Paste text from clipboard.
-- `^x` : Cut text to clipboard.
-- `^z` : Undo the previous edit.
-- `^y` : Redo the last undo.
 - `^w` : Suspend the session, optionally save the file and exit. The suspended
   session is saved to a file with a .tsuspend extension. Opening this file will
   resume where you left off.
-- `Tab` : When typing autocompletes the current word.
+- `^x` : Cut text to clipboard.
+- `^y` : Redo the last undo.
+- `^z` : Undo the previous edit.
 - `^Down Arrow` : Go to definition of word under cursor (if found in tags file).
 - `^Up Arrow` : Return from definition.
-- `Alt+;` : Toggle tab guides.
-- `Alg+/` : Comment/uncomment selection
+- `Tab` : When typing autocompletes the current word.
+- `Alt + ;` : Toggle tab guides.
+- `Alg + /` : Comment/uncomment selection
 - `F2` : Execute a shell command
+- `F3` : Repeat the previous search.
+
 
 Command Line Arguments:
 -----------------------
