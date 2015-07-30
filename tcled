@@ -804,6 +804,16 @@ proc clearline {} {
 	return [ESC_ 2K]
 }
 
+proc hideCursor {} {
+	puts -nonewline [ESC_ ?25l]
+	flush stdout
+}
+
+proc showCursor {} {
+	puts -nonewline [ESC_ ?25h]
+	flush stdout
+}
+
 proc stripComments {data} {
 	set ret ""
 	foreach x [split $data "\n"] {
@@ -1880,30 +1890,37 @@ uplevel 1 {
 					set env(s) [getSelectionText]
 					set env(c) [clipboard get]
 					
+					clear
+					goto home
+					hideCursor
 					if {![catch {set pipe [open "|$commandline 2>@1"]} result]} {
-						set result [read $pipe]
+						while {![eof $pipe]} {
+							set l [gets $pipe]
+							append result $l
+							puts $l
+						}
 						catch {close $pipe}
 					}
 					
 					if {$result != ""} {
-						clear
-						goto home
-						puts -nonewline [join [lrange [split $result \n] 0 [expr $IDX(ROWMAX)-1]] \n]
 						drawStatus "Press ESC to exit this screen" 1
-						if {[set op [getConfirmation {[C]opy to clipboard or [I]nsert to document?} {c i}]] != ""} {
+						set op [getConfirmation {[C]opy to clipboard or [I]nsert to document?} {c i}]
+						if {$op != ""} {
 							switch $op {
 								c - C {
 									clipboard clear
-									clipboard append -- $result
+									clipboard append -- [string trim $result]
 								}
 								i - I {
 									set keybuffer [string trim $result]
 									handleRedraw forced
+									showCursor
 									return 1
 								}
 							}
 						}
 					}
+					showCursor
 				}
 				status ""
 				handleRedraw forced
