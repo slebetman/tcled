@@ -2398,7 +2398,10 @@ proc handleRedraw {{mode "full"}} {
 
 proc lastModified {} {
 	global filename
-	return [file mtime $filename]
+	if {[file exists $filename]} {
+		return [file mtime $filename]
+	}
+	return 0
 }
 
 ################################
