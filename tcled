@@ -1893,14 +1893,16 @@ uplevel 1 {
 					clear
 					goto home
 					hideCursor
-					if {![catch {set pipe [open "|$commandline 2>@1"]} result]} {
+					set result {}
+					if {![catch {set pipe [open "|$commandline 2>@1"]}]} {
 						while {![eof $pipe]} {
 							set l [gets $pipe]
-							append result $l
+							lappend result $l
 							puts $l
 						}
 						catch {close $pipe}
 					}
+					set result [join $result \n]
 					
 					if {$result != ""} {
 						drawStatus "Press ESC to exit this screen" 1
