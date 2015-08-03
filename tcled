@@ -123,7 +123,7 @@ set syntaxRules {
 		# Built-in types:
 		{\y(u?int(?:8|16|32|64)?|float(?:32|64)|complex(?:64|128))\y}
 			{$style(bright);$fg(magenta)}
-		{\y(byte|rune|uintptr|string|boolean)\y}
+		{\y(byte|rune|uintptr|string|bool)\y}
 			{$style(bright);$fg(magenta)}
 		
 		
