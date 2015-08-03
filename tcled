@@ -660,39 +660,63 @@ proc getInput {{txt ""} {historybuffer ""}} {
 				return
 			}
 			
-			if {$keybuffer == "\[C"} { ;# Cursor Right
-				if {$inputCursor < [string length $ret]} {
-					incr inputCursor
-					inputStat $txt $ret $inputCursor
-				}
-			} elseif {$keybuffer == "\[D"} { ;# Cursor Left
-				if {$inputCursor > 0} {
-					incr inputCursor -1
-					inputStat $txt $ret $inputCursor
-				}
-			} elseif {$historybuffer != ""} {
-				# handle history if given:
-				if {$keybuffer == "\[A"} {
-					if {$hidx < ([llength $hist]-1)} {
-						incr hidx
+			switch -exact -- $keybuffer {	
+				"\[C" { ;# Cursor Right
+					if {$inputCursor < [string length $ret]} {
+						incr inputCursor
 					}
-				} elseif {$keybuffer == "\[B"} {
-					if {$hidx >= 0} {
-						incr hidx -1
+				} 
+				"\[D" { ;# Cursor Left
+					if {$inputCursor > 0} {
+						incr inputCursor -1
 					}
 				}
-				
-				if {$hidx >= 0} {
-					set ret [lindex $hist end-$hidx]
-				} else {
-					set ret ""
+				"OH" -
+				"\[H" -
+				"\[7~" -
+				"\[1~" { ;# Home
+					set inputCursor 0
 				}
-				set inputCursor [string length $ret]
-				inputStat $txt $ret $inputCursor
+				"OF" -
+				"\[F" -
+				"\[K" -
+				"\[8~" -
+				"\[4~" { ;# End
+					set inputCursor [string length $ret]
+				}
+				"\[A" -
+				"\[B" {
+					if {$historybuffer != ""} {
+						# handle history if given:
+						if {$keybuffer == "\[A"} {
+							if {$hidx < ([llength $hist]-1)} {
+								incr hidx
+							}
+						} elseif {$keybuffer == "\[B"} {
+							if {$hidx >= 0} {
+								incr hidx -1
+							}
+						}
+						
+						if {$hidx >= 0} {
+							set ret [lindex $hist end-$hidx]
+						} else {
+							set ret ""
+						}
+						set inputCursor [string length $ret]
+					}
+				}
 			}
+			inputStat $txt $ret $inputCursor
 
 			# need to ignore escapes sequences:
-			while {[set ch [readbuf]] != "~" && $keybuffer != ""} {}
+			# while {[set ch [readbuf]] != "~" && $keybuffer != ""} {}
+			set firstEsc [string last [ESC] $keybuffer]
+			if {$firstEsc == -1} {
+				set keybuffer ""
+			} else {
+				set keybuffer [string range $keybuffer $firstEsc end]
+			}
 			continue
 		} elseif {$ch == "\u007f" || $ch == "\u0008"} {
 			# handle backspace:
@@ -707,7 +731,6 @@ proc getInput {{txt ""} {historybuffer ""}} {
 		} elseif {[string is print $ch]} {
 			set ret [stringInsert $ret $inputCursor $ch]
 			incr inputCursor
-			# append ret $ch
 		}
 		inputStat $txt $ret $inputCursor
 	}
