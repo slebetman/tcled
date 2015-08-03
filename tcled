@@ -2669,7 +2669,9 @@ proc console_edit {fileName} {
 	# Set window title:
 	puts -nonewline [WINDOW_TITLE $comeFrom$filename]
 
-	exec stty raw -echo
+	if {[catch {exec stty raw -echo}]} {
+		puts stderr "Warning, not a terminal!"
+	}
 	
 	set err [catch edittext]
 	if {$err == 0} {
@@ -2685,7 +2687,7 @@ proc doExit {{err ""}} {
 	# Reset terminal:
 	puts -nonewline [ESC c [ESC_ 2J]]
 	flush stdout
-	exec stty -raw echo
+	catch {exec stty -raw echo}
 	after 100
 	
 	if {$err != ""} {
