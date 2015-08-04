@@ -2483,7 +2483,7 @@ proc edittext {} {
 			}
 			# Check if the file on disk has changed
 			set lastModified [lastModified]
-			if {$lastModified > $mtime} {
+			if {$lastModified != $mtime} {
 				set mtime $lastModified
 				handleReload "File on disk has changed. Discard unsaved changes and reload?"
 			}
