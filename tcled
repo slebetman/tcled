@@ -2087,7 +2087,7 @@ uplevel 1 {
 					set bufRow $s_row_start
 					set bufCol 0
 	
-					registerUndo D $s_row_start 0 "$oldlines\n"
+					registerUndo D $s_row_start 0 "[join $oldlines \n]\n"
 	
 					if {$bufRow >= [llength $BUFFER] && $bufRow > 0} {
 						set bufRow [expr {[llength $BUFFER]-1}]
