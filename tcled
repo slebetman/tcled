@@ -1160,7 +1160,6 @@ proc handleInsert {} {
 	
 	set selection_range [normalizeSelection]
 
-	set line [lindex $BUFFER $bufRow]
 	if {$printbuffer == "\t"} {
 		if {[llength $selection_range]} {
 			# Block indent:
@@ -1195,23 +1194,61 @@ proc handleInsert {} {
 	} else {
 		set tabCompleteWord ""
 	}
-	set ::bufSelection {}
-
+	
 	set newstring [getSpaces $printbuffer][string trimleft $printbuffer]
-
+	
+	if {[llength $selection_range]} {
+		lassign $selection_range \
+			s_row_start s_col_start \
+			s_row_end s_col_end
+		
+		set copy_lines [lrange $BUFFER $s_row_start $s_row_end]
+		set first_line [lindex $copy_lines 0]
+		set last_line [lindex $copy_lines end]
+		if {[llength $copy_lines] > 1} {
+			lset copy_lines 0 [
+				string range $first_line $s_col_start end
+			]
+			lset copy_lines end [
+				string range $last_line 0 $s_col_end
+			]
+		} else {
+			lset copy_lines 0 [
+				string range [
+					lindex $copy_lines 0
+				] $s_col_start $s_col_end
+			]
+		}
+		set BUFFER [lreplace $BUFFER $s_row_start $s_row_end [join [
+			list [
+				string range $first_line 0 [expr $s_col_start-1]
+			] [
+				string range $last_line [expr $s_col_end+1] end
+			]
+		] ""]]
+		set bufRow $s_row_start
+		set bufCol $s_col_start
+		
+		registerUndo D $s_row_start $s_col_start [join $copy_lines \n]
+	}
+	set line [lindex $BUFFER $bufRow]
 	set line [stringInsert $line $bufCol $newstring]
 
 	set BUFFER [lreplace $BUFFER $bufRow $bufRow $line]
 	set len [string length $printbuffer]
 	set col $bufCol
 	incr bufCol $len
+	registerUndo I $bufRow $col $bufRow $bufCol
 
 	set fragment [currentFragment string]
 	if {[regexp {\w+} $fragment fragment]} {
 		scanAutoComplete $fragment
 	}
-	
-	registerUndo I $bufRow $col $bufRow $bufCol
+	if {[llength $selection_range]} {
+		set ::IDX(ROWLAST) -1 ;# force redraw
+		handleRedraw forced
+	}
+	set ::bufSelection {}
 }
 
 proc undo {cmd sRow sCol args} {
