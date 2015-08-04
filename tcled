@@ -1948,7 +1948,7 @@ uplevel 1 {
 					# Set special variables:
 					set env(f) $filename
 					set env(s) [getSelectionText]
-					set env(c) [clipboard get]
+					catch {set env(c) [clipboard get]}
 					
 					clear
 					goto home
