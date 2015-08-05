@@ -125,7 +125,9 @@ set syntaxRules {
 			{$style(bright);$fg(magenta)}
 		{\y(byte|rune|uintptr|string|bool)\y}
 			{$style(bright);$fg(magenta)}
-		
+	
+		# Raw string literals (backticks):
+		{`.*?`} {$STRING_STYLE}	
 		
 		# Treat true, false etc. like numbers:
 		{\y(iota|true|false|nil)\y} {$NUMBER_STYLE}
