@@ -345,6 +345,7 @@ set comeFrom ""
 set keybuffer ""
 set bufSelection {}
 set mtime 0
+set insertToSelection 0
 
 ###############################
 # Backport lassign if < 8.5
@@ -1196,7 +1197,7 @@ proc handleNewline {} {
 
 proc handleInsert {} {
 	global BUFFER bufRow bufCol viewRow tabCompleteWord
-	global undoBuffer redoBuffer writable
+	global undoBuffer redoBuffer writable insertToSelection
 	if {!$writable} return
 	upvar 1 printbuffer printbuffer
 	
@@ -1240,6 +1241,7 @@ proc handleInsert {} {
 	set newstring [getSpaces $printbuffer][string trimleft $printbuffer]
 	
 	if {[llength $selection_range]} {
+		set insertToSelection 1
 		handleDelete -
 	}
 	set line [lindex $BUFFER $bufRow]
@@ -2441,7 +2443,7 @@ proc lastModified {} {
 ################################
 proc edittext {} {
 	global BUFFER IDX viewRow viewCol bufRow bufCol writable tabCompleteWord
-	global init_commands keybuffer mtime
+	global init_commands keybuffer mtime insertToSelection
 
 	set IDX(ROWLAST) -1 ; # last row most recently displayed in view
 	set IDX(COLLAST) -1
@@ -2477,7 +2479,8 @@ proc edittext {} {
 			}
 			if {$printbuffer != ""} {
 				handleInsert
-				if {[llength $::bufSelection]} {
+				if {[llength $::bufSelection] || $insertToSelection} {
+					set insertToSelection 0
 					handleRedraw forced
 				} else {
 					if {$prevRow != $bufRow} {
@@ -2506,7 +2509,12 @@ proc edittext {} {
 			handleInsert
 			handleNewline
 			if {$keybuffer == ""} {
-				handleRedraw
+				if {$insertToSelection} {
+					set insertToSelection 0
+					handleRedraw forced
+				} else {
+					handleRedraw
+				}
 			}
 			set printbuffer ""
 		} else {
