@@ -578,8 +578,7 @@ proc selectMenu {selections {selected -1}} {
 	
 	# show cursor:
 	puts -nonewline [ESC_ ?25h]
-	set IDX(ROWLAST) -1 ;# force redraw
-	handleRedraw
+	handleRedraw forced
 	
 	return $selected
 }
@@ -1320,8 +1319,7 @@ proc undo {cmd sRow sCol args} {
 	if {$bufRow < $IDX(COLMAX)} {
 		set viewRow [expr {$bufRow+1}]
 	}
-	set IDX(ROWLAST) -1 ;# force redraw
-	handleRedraw
+	handleRedraw forced
 	return $ret
 }
 
@@ -1485,9 +1483,8 @@ proc goToDef {} {
 			puts -nonewline [WINDOW_TITLE "$comeFrom$filename"]
 
 			read stdin
-			set IDX(ROWLAST) -1 ;# force redraw
 			status ""
-			handleRedraw
+			handleRedraw forced
 		}
 	}
 }
@@ -2055,9 +2052,8 @@ uplevel 1 {
 			
 			waitForESC
 
-			set IDX(ROWLAST) -1 ;# force redraw
 			status ""
-			handleRedraw
+			handleRedraw forced
 		}
 		\u0011 { ;# ^q - quit
 			return done
@@ -2473,8 +2469,7 @@ proc edittext {} {
 				if {$changed} {
 					status
 					idx $bufRow $bufCol
-					set IDX(ROWLAST) -1 ;# force redraw
-					handleRedraw
+					handleRedraw forced
 				}
 			}
 			if {$printbuffer != ""} {
