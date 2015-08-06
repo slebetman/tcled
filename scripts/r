@@ -1,0 +1,13 @@
+#! /bin/bash
+
+SEARCHTERM=`echo "$1" | sed 's|/|\\/|g'`
+REPLACEMENT=`echo "$2" | sed 's|/|\\/|g'`
+
+if [ "$s" != "" ];then
+	echo "$s" | sed "s/$SEARCHTERM/$REPLACEMENT/g"
+elif [ "$f" != "" ];then
+	temp=`mktemp`
+	cat "$f" | sed "s/$SEARCHTERM/$REPLACEMENT/g" > $temp
+	mv "$f" "$f".old
+	mv $temp "$f"
+fi

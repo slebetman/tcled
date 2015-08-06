@@ -7,6 +7,4 @@ elif [ "$f" != "" ];then
 	cat "$f" | awk "$1" > $temp
 	mv "$f" "$f".old
 	mv $temp "$f"
-else
-	cat "$@" | awk "$1"
 fi

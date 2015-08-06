@@ -7,6 +7,4 @@ elif [ "$f" != "" ];then
 	cat "$f" | sed "$1" > $temp
 	mv "$f" "$f".old
 	mv $temp "$f"
-else
-	cat "$@" | sed "$1"
 fi
