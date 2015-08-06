@@ -1,0 +1,8 @@
+Useful shell scripts for exec (F2).
+
+Copy these scripts to a bin directory to install. Better yet, add this scripts
+directory to your $PATH.
+
+These scripts attempt to automagically do the right thing by checking the
+values of the exported env variables: $f and $s. If there are selected text
+they will use it as input otherwise the current file will be used as input.
