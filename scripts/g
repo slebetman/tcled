@@ -1,0 +1,21 @@
+#! /bin/bash
+
+#useful go commands
+
+case "$1" in
+	t)
+		go test | grep FAIL
+		;;
+	f)
+		gofmt -w .
+		;;
+	i)
+		goimports -w .
+		;;
+	b)
+		go build
+		;;
+	*)
+		xterm -geometry 120x30 -e 'go run `ls *go|grep -v _test`' &> /dev/null &!
+		;;
+esac
