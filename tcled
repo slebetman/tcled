@@ -1964,6 +1964,7 @@ uplevel 1 {
 							set l [gets $pipe]
 							lappend result $l
 							puts $l
+							flush stdout
 						}
 						catch {close $pipe}
 					}
