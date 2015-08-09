@@ -1,5 +1,7 @@
 #! /bin/bash
 
+# Simple undo
+
 if [ "$f" != ""  ];then
 	mv "$f".old "$f"
 fi

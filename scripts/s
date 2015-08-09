@@ -1,5 +1,7 @@
 #! /bin/bash
 
+# Run sed on selection or file
+
 if [ "$s" != "" ];then
 	echo "$s" | sed "$1"
 elif [ "$f" != "" ];then

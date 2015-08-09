@@ -1,5 +1,7 @@
 #! /bin/bash
 
+# Run awk on selection or file
+
 if [ "$s" != "" ];then
 	echo "$s" | awk "$1"
 elif [ "$f" != "" ];then

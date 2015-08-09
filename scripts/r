@@ -1,5 +1,7 @@
 #! /bin/bash
 
+# Search and replace implemented with sed
+
 SEARCHTERM=`echo "$1" | sed 's|/|\\/|g'`
 REPLACEMENT=`echo "$2" | sed 's|/|\\/|g'`
 

@@ -1,6 +1,6 @@
 #! /bin/bash
 
-#useful go commands
+# Useful go commands
 
 case "$1" in
 	t)

@@ -1,3 +1,5 @@
 #! /bin/bash
 
+# Execute git commit all with commit message
+
 git commit -a -m "$*"
