@@ -49,7 +49,8 @@ Features:
   widgets will be created just using the cross-platform clipboard support)
 - Supports executing shell commands (see documentation for F2 below). The result
   of the shell command can then either be inserted directly into the document
-  or copied to the clipboard. With this feature your OS is your IDE!
+  or copied to the clipboard. With this feature Unix is your IDE (as it was
+  always meant to be)!
 
 Usage:
 ------
