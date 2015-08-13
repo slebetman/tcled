@@ -47,7 +47,8 @@ Features:
   variable definitions.
 - Supports X/Gnome/Windows/Mac clipboard if available (requires Tk, no Tk
   widgets will be created just using the cross-platform clipboard support)
-- Properly support mouse selection.
+- Properly support mouse selection (note: This means that copy on X-selection
+  no longer works. Use ^c to copy instead).
 - Support mousewheel scrolling.
 - Supports executing shell commands (see documentation for F2 below). The result
   of the shell command can then either be inserted directly into the document
