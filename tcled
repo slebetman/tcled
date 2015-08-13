@@ -21,7 +21,7 @@ set usetabs true
 # Search is case sensitive:
 set searchcase false
 # Mouse wheel speed (lines to scroll):
-set mousewheelSpeed 5
+set mousewheelSpeed 4
 # Draw tab guide (can be toggled via alt-;):
 set tabGuide 0
 if {[fconfigure stdout -encoding] == "utf-8"} {
@@ -1486,7 +1486,7 @@ proc goToDef {} {
 				# Set window title:
 				puts -nonewline [WINDOW_TITLE "$comeFrom$filename"]
 				# Enable mouse reporting:
-				puts -nonewline [ESC_ ?1000h][ESC_ ?1002h][ESC_ ?1015h]
+				puts -nonewline [ESC_ ?1002h][ESC_ ?1015h]
 			}
 
 			read stdin
@@ -2002,33 +2002,32 @@ uplevel 1 {
 				set found 1; break
 			}
 		}
-		# Mouse events:
-		global viewRow mousewheelSpeed IDX
-		switch -regexp -- $seq {
-			{\[97;\d+;\d+M} { ;# mousewheel down
-				if {$viewRow < ([llength $BUFFER] - 1)} {
-					incr viewRow -$mousewheelSpeed
+		if {[regexp {\[(\d+);(\d+);(\d+)M} $seq -> cmd x y]} {
+			# Mouse events:
+			global viewRow mousewheelSpeed IDX
+			switch $cmd {
+				97 { ;# mousewheel down
+					if {$viewRow < ([llength $BUFFER] - 1)} {
+						incr viewRow -$mousewheelSpeed
+					}
+					for {set x 0} {$x < $mousewheelSpeed} {incr x} cursorDown
+					handleRedraw
+					set found 1; break
 				}
-				for {set x 0} {$x < $mousewheelSpeed} {incr x} cursorDown
-				handleRedraw
-				set found 1; break
-			}
-			{\[96;\d+;\d+M} { ;# mousewheel up
-				if {$viewRow > ($IDX(ROWMAX) - 1)} {
-					incr viewRow $mousewheelSpeed
+				96 { ;# mousewheel up
+					if {$viewRow > ($IDX(ROWMAX) - 1)} {
+						incr viewRow $mousewheelSpeed
+					}
+					for {set x 0} {$x < $mousewheelSpeed} {incr x} cursorUp
+					handleRedraw
+					set found 1; break
 				}
-				for {set x 0} {$x < $mousewheelSpeed} {incr x} cursorUp
-				handleRedraw
-				set found 1; break
-			}
-			{\[32;\d+;\d+M} { ;# mouse selection start
-			
-			}
-			{\[35;\d+;\d+M} { ;# mouse selection end
-			
-			}
-			{\[64;\d+;\d+M} { ;# mouse selection move
-			
+				32 { ;# mouse selection start
+				}
+				35 { ;# mouse selection end
+				}
+				64 { ;# mouse selection move
+				}
 			}
 		}
 	}
@@ -2719,7 +2718,7 @@ proc console_edit {fileName} {
 		# Set window title:
 		puts -nonewline [WINDOW_TITLE "$comeFrom$filename"]
 		# Enable mouse reporting:
-		puts -nonewline [ESC_ ?1000h ][ESC_ ?1002h][ESC_ ?1015h]
+		puts -nonewline [ESC_ ?1002h ][ESC_ ?1015h]
 	}]} {
 		puts stderr "Warning, not a terminal!"
 	}
@@ -2738,7 +2737,7 @@ proc doExit {{err ""}} {
 	# Reset terminal:
 	puts -nonewline [ESC c [ESC_ 2J]]
 	# Disable mouse reporting:
-	puts -nonewline [ESC_ ?1000l][ESC_ ?1002l][ESC_ ?1015l]
+	puts -nonewline [ESC_ ?1002l][ESC_ ?1015l]
 	flush stdout
 	catch {exec stty -raw echo}
 	after 100
