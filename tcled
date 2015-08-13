@@ -741,6 +741,22 @@ proc getInput {{txt ""} {historybuffer ""}} {
 	return $ret
 }
 
+proc colFromViewCol {row vCol} {
+	set col $vCol
+	set c [getCol $row $col]
+	
+	if {$c == $col} {
+		return $col
+	}
+	
+	# Try to find the col value that would match the original vCol:
+	while {$c > ($vCol+1) && $col > 0} {
+		incr col -1
+		set c [getCol $row $col]
+	}
+	return $col
+}
+
 proc getCol {row bCol {pos "start"}} {
 	global BUFFER tabstop
 
@@ -2004,7 +2020,11 @@ uplevel 1 {
 		}
 		if {[regexp {\[(\d+);(\d+);(\d+)M} $seq -> cmd x y]} {
 			# Mouse events:
-			global viewRow mousewheelSpeed IDX
+			global viewRow mousewheelSpeed IDX bufSelection
+			
+			set mouseRow [expr {$y+$bufRow-$viewRow}]
+			set mouseCol [colFromViewCol $mouseRow [expr {$x-1}]]
+			
 			switch $cmd {
 				97 { ;# mousewheel down
 					if {$viewRow < ([llength $BUFFER] - 1)} {
@@ -2023,10 +2043,24 @@ uplevel 1 {
 					set found 1; break
 				}
 				32 { ;# mouse selection start
+					set bufSelection [list $mouseRow $mouseCol $mouseRow $mouseCol]
+					set selecting 1;set found 1; break
 				}
 				35 { ;# mouse selection end
+					if {[llength $bufSelection]} {
+						lset bufSelection 2 $mouseRow
+						lset bufSelection 3 $mouseCol
+						handleRedraw forced
+					}
+					set selecting 1;set found 1; break
 				}
 				64 { ;# mouse selection move
+					if {[llength $bufSelection]} {
+						lset bufSelection 2 $mouseRow
+						lset bufSelection 3 $mouseCol
+						handleRedraw forced
+					}
+					set selecting 1;set found 1; break
 				}
 			}
 		}
