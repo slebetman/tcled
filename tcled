@@ -2026,6 +2026,11 @@ uplevel 1 {
 			
 			set mouseRow [expr {$y+$bufRow-$viewRow}]
 			set mouseCol [colFromViewCol $mouseRow [expr {$x-1}]]
+			set bufLen [llength $BUFFER]
+			if {$mouseRow > $bufLen} {
+				incr y [expr {$bufLen-$mouseRow}]
+				set mouseRow $bufLen
+			}
 			
 			switch $cmd {
 				97 { ;# mousewheel down
@@ -2050,7 +2055,7 @@ uplevel 1 {
 					set selecting 1;set found 1; break
 				}
 				35 { ;# mouse selection end
-					if {!$mouseMoved} {
+					if {!$mouseMoved} { ;# then don't select anything
 						set selecting 0
 						set bufSelection {}
 						set viewRow $y
