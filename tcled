@@ -2026,7 +2026,7 @@ uplevel 1 {
 			
 			set mouseRow [expr {$y+$bufRow-$viewRow}]
 			set mouseCol [colFromViewCol $mouseRow [expr {$x-1}]]
-			set bufLen [llength $BUFFER]
+			set bufLen [expr {[llength $BUFFER]-1}]
 			if {$mouseRow > $bufLen} {
 				incr y [expr {$bufLen-$mouseRow}]
 				set mouseRow $bufLen
