@@ -348,6 +348,7 @@ set keybuffer ""
 set bufSelection {}
 set mtime 0
 set insertToSelection 0
+set mouseMoved 0
 
 ###############################
 # Backport lassign if < 8.5
@@ -2020,7 +2021,8 @@ uplevel 1 {
 		}
 		if {[regexp {\[(\d+);(\d+);(\d+)M} $seq -> cmd x y]} {
 			# Mouse events:
-			global viewRow mousewheelSpeed IDX bufSelection
+			global bufRow bufCol viewRow IDX bufSelection
+			global mousewheelSpeed mouseMoved
 			
 			set mouseRow [expr {$y+$bufRow-$viewRow}]
 			set mouseCol [colFromViewCol $mouseRow [expr {$x-1}]]
@@ -2044,22 +2046,30 @@ uplevel 1 {
 				}
 				32 { ;# mouse selection start
 					set bufSelection [list $mouseRow $mouseCol $mouseRow $mouseCol]
+					set mouseMoved 0
 					set selecting 1;set found 1; break
 				}
 				35 { ;# mouse selection end
-					if {[llength $bufSelection]} {
+					if {!$mouseMoved} {
+						set selecting 0
+						set bufSelection {}
+						set viewRow $y
+						set bufRow $mouseRow
+						set bufCol $mouseCol
+						handleRedraw forced
+					} else {
+						set selecting 1
 						lset bufSelection 2 $mouseRow
 						lset bufSelection 3 $mouseCol
 						handleRedraw forced
 					}
-					set selecting 1;set found 1; break
+					set found 1; break
 				}
 				64 { ;# mouse selection move
-					if {[llength $bufSelection]} {
-						lset bufSelection 2 $mouseRow
-						lset bufSelection 3 $mouseCol
-						handleRedraw forced
-					}
+					lset bufSelection 2 $mouseRow
+					lset bufSelection 3 $mouseCol
+					set mouseMoved 1
+					handleRedraw forced
 					set selecting 1;set found 1; break
 				}
 			}
