@@ -47,6 +47,8 @@ Features:
   variable definitions.
 - Supports X/Gnome/Windows/Mac clipboard if available (requires Tk, no Tk
   widgets will be created just using the cross-platform clipboard support)
+- Properly support mouse selection.
+- Support mousewheel scrolling.
 - Supports executing shell commands (see documentation for F2 below). The result
   of the shell command can then either be inserted directly into the document
   or copied to the clipboard. With this feature your OS is your IDE!
@@ -67,8 +69,9 @@ Usage:
 - `Tab` while text is selected : Block indent.
 - `Shift + Tab` while text is selected : Block de-indent.
 
-Basically the usual navigation keys behaves as expected. The "^" character
-below denotes pressing the Ctrl key.
+Basically the usual navigation keys behaves as expected. In addition, you can use
+the mousewheel to scroll (on xterm compatible terminals - which is most terminals).
+The "^" character below denotes pressing the Ctrl key.
 
 - `^a` : Moves the cursor to the beginning of the line.
 - `^c` : Copies selected text to clipboard.
