@@ -20,6 +20,8 @@ set tabstop 4
 set usetabs true
 # Search is case sensitive:
 set searchcase false
+# Mouse wheel speed (lines to scroll):
+set mousewheelSpeed 4
 # Draw tab guide (can be toggled via alt-;):
 set tabGuide 0
 if {[fconfigure stdout -encoding] == "utf-8"} {
@@ -739,6 +741,22 @@ proc getInput {{txt ""} {historybuffer ""}} {
 	return $ret
 }
 
+proc colFromViewCol {row vCol} {
+	set col $vCol
+	set c [getCol $row $col]
+	
+	if {$c == $col} {
+		return $col
+	}
+	
+	# Try to find the col value that would match the original vCol:
+	while {$c > ($vCol+1) && $col > 0} {
+		incr col -1
+		set c [getCol $row $col]
+	}
+	return $col
+}
+
 proc getCol {row bCol {pos "start"}} {
 	global BUFFER tabstop
 
@@ -919,10 +937,10 @@ proc autoCompleteStatus {} {
 	if {[llength $autoCompleteMatches]} {
 		set stat ""
 		foreach n {1 2 3 4 5 6} m $autoCompleteMatches {
-			if {[expr {
+			if {
 				([string length $stat]+[string length $m]+3) >
 				$IDX(ROWCOL)
-			}]} break
+			} break
 			
 			if {$n != "" && $m != ""} {
 				append stat "${n}:$m "
@@ -1099,11 +1117,12 @@ proc syntaxHilight {line start} {
 }
 
 proc handleSearch {} {
-	global searchpattern searchcase
+	global searchpattern searchcase bufSelection
 	global BUFFER IDX viewRow bufRow bufCol
 
 	if {$searchpattern != ""} {
 		status "Search: $searchpattern"
+		set bufSelection ""
 
 		if {!$searchcase} {
 			# Add (?i) to make search case insensitive:
@@ -1411,11 +1430,11 @@ proc handlePageDown {} {
 }
 
 proc handleGotoLine {n} {
-	global bufRow viewRow BUFFER
+	global bufRow viewRow IDX BUFFER
 
 	set bufRow [expr {$n-1}]
 	if {$bufRow < $viewRow} {
-		set viewRow 0
+		set viewRow $IDX(ROWMAX)
 	} else {
 		set len [llength $BUFFER]
 		if {$bufRow > $len} {
@@ -1475,12 +1494,16 @@ proc goToDef {} {
 			}
 			cd $thisDir
 
-			# Set raw mode again bacause the exiting program
-			# may have reset it to canonical mode:
-			exec stty raw -echo  
-
-			# Set window title:
-			puts -nonewline [WINDOW_TITLE "$comeFrom$filename"]
+			catch {
+				# Set raw mode again bacause the exiting program
+				# may have reset it to canonical mode:
+				exec stty raw -echo  
+	
+				# Set window title:
+				puts -nonewline [WINDOW_TITLE "$comeFrom$filename"]
+				# Enable mouse reporting:
+				puts -nonewline [ESC_ ?1002h][ESC_ ?1015h]
+			}
 
 			read stdin
 			status ""
@@ -1669,7 +1692,7 @@ proc resume {data} {
 proc cursorDown {{mode "normal"}} {
 	global bufRow bufCol BUFFER IDX viewCol viewRow
 	
-	if {$bufRow < [expr {[llength $BUFFER] - 1}]} {
+	if {$bufRow < ([llength $BUFFER] - 1)} {
 		if {[getCol $bufRow $bufCol] > $IDX(COLMAX)} {
 			set tmp $bufCol
 			set bufCol 0
@@ -1993,6 +2016,52 @@ uplevel 1 {
 				status ""
 				handleRedraw forced
 				set found 1; break
+			}
+		}
+		if {[regexp {\[(\d+);(\d+);(\d+)M} $seq -> cmd x y]} {
+			# Mouse events:
+			global viewRow mousewheelSpeed IDX bufSelection
+			
+			set mouseRow [expr {$y+$bufRow-$viewRow}]
+			set mouseCol [colFromViewCol $mouseRow [expr {$x-1}]]
+			
+			switch $cmd {
+				97 { ;# mousewheel down
+					if {$viewRow < ([llength $BUFFER] - 1)} {
+						incr viewRow -$mousewheelSpeed
+					}
+					for {set x 0} {$x < $mousewheelSpeed} {incr x} cursorDown
+					handleRedraw
+					set found 1; break
+				}
+				96 { ;# mousewheel up
+					if {$viewRow > ($IDX(ROWMAX) - 1)} {
+						incr viewRow $mousewheelSpeed
+					}
+					for {set x 0} {$x < $mousewheelSpeed} {incr x} cursorUp
+					handleRedraw
+					set found 1; break
+				}
+				32 { ;# mouse selection start
+					set bufSelection [list $mouseRow $mouseCol $mouseRow $mouseCol]
+					set selecting 1;set found 1; break
+				}
+				35 { ;# mouse selection end
+					if {[llength $bufSelection]} {
+						lset bufSelection 2 $mouseRow
+						lset bufSelection 3 $mouseCol
+						handleRedraw forced
+					}
+					set selecting 1;set found 1; break
+				}
+				64 { ;# mouse selection move
+					if {[llength $bufSelection]} {
+						lset bufSelection 2 $mouseRow
+						lset bufSelection 3 $mouseCol
+						handleRedraw forced
+					}
+					set selecting 1;set found 1; break
+				}
 			}
 		}
 	}
@@ -2677,10 +2746,14 @@ proc console_edit {fileName} {
 	fconfigure stdin -buffering none -blocking 0
 	fconfigure stdout -buffering full -translation crlf
 
-	# Set window title:
-	puts -nonewline [WINDOW_TITLE $comeFrom$filename]
-
-	if {[catch {exec stty raw -echo}]} {
+	if {[catch {
+		exec stty raw -echo
+	
+		# Set window title:
+		puts -nonewline [WINDOW_TITLE "$comeFrom$filename"]
+		# Enable mouse reporting:
+		puts -nonewline [ESC_ ?1002h ][ESC_ ?1015h]
+	}]} {
 		puts stderr "Warning, not a terminal!"
 	}
 	
@@ -2697,6 +2770,8 @@ proc console_edit {fileName} {
 proc doExit {{err ""}} {
 	# Reset terminal:
 	puts -nonewline [ESC c [ESC_ 2J]]
+	# Disable mouse reporting:
+	puts -nonewline [ESC_ ?1002l][ESC_ ?1015l]
 	flush stdout
 	catch {exec stty -raw echo}
 	after 100
