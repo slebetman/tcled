@@ -2064,8 +2064,9 @@ uplevel 1 {
 						set bufRow $mouseRow
 						set bufCol $mouseCol
 						
-						if {$clickCount == 2} {
-							# double click!
+						if {$clickCount == 2} { ;# double click!
+							# Note: clickCount is reset
+							# every second in edittext
 							
 							set bufSelection [list \
 								$bufRow [currentWord start] \
