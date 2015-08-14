@@ -349,6 +349,7 @@ set bufSelection {}
 set mtime 0
 set insertToSelection 0
 set mouseMoved 0
+set clickCount 0
 
 ###############################
 # Backport lassign if < 8.5
@@ -2022,7 +2023,7 @@ uplevel 1 {
 		if {[regexp {\[(\d+);(\d+);(\d+)M} $seq -> cmd x y]} {
 			# Mouse events:
 			global bufRow bufCol viewRow IDX bufSelection
-			global mousewheelSpeed mouseMoved
+			global mousewheelSpeed mouseMoved clickCount
 			
 			set mouseRow [expr {$y+$bufRow-$viewRow}]
 			set mouseCol [colFromViewCol $mouseRow [expr {$x-1}]]
@@ -2056,11 +2057,25 @@ uplevel 1 {
 				}
 				35 { ;# mouse selection end
 					if {!$mouseMoved} { ;# then don't select anything
+						incr clickCount
 						set selecting 0
 						set bufSelection {}
 						set viewRow $y
 						set bufRow $mouseRow
 						set bufCol $mouseCol
+						
+						if {$clickCount == 2} {
+							# double click!
+							
+							set bufSelection [list \
+								$bufRow [currentWord start] \
+								$bufRow [currentWord end]
+							]
+							status $bufSelection
+							flush stdout
+							set selecting 1
+						}
+						
 						handleRedraw forced
 					} else {
 						set selecting 1
@@ -2548,6 +2563,7 @@ proc edittext {} {
 		if {$keybuffer == ""} {
 			set now [clock seconds]
 			if {$now != $timestamp} {
+				set ::clickCount 0
 				set timestamp $now
 				set changed 0
 				getRowColMax
