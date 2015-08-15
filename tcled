@@ -330,6 +330,7 @@ set filename ""
 set fileext ""
 set searchpattern ""
 set searchhistory ""
+set debughistory ""
 set exechistory ""
 set gotohistory ""
 set statusmessage ""
@@ -446,6 +447,7 @@ proc readbuf {} {
 	}
 	return $ret
 }
+
 
 proc stringInsert {txt idx str} {
 	return [string range $txt 0 [expr $idx-1]]$str[string range $txt [expr $idx] end]
@@ -1292,9 +1294,18 @@ proc handleInsert {} {
 	}
 }
 
+proc fixViewRow {oldBufRow} {
+	if {abs($::bufRow-$oldBufRow) < $::IDX(ROWMAX)} {
+		incr ::viewRow [expr {$::bufRow-$oldBufRow}]
+	} else {
+		set ::viewRow [expr {$::IDX(ROWMAX)/2}]
+	}
+}
+
 proc undo {cmd sRow sCol args} {
 	global BUFFER IDX bufRow bufCol viewRow
 
+	set oldBufRow $bufRow
 	set bufRow $sRow
 	set bufCol $sCol
 	set oldline [lindex $BUFFER $sRow]
@@ -1370,9 +1381,7 @@ proc undo {cmd sRow sCol args} {
 		}
 	}
 
-	if {$bufRow < $IDX(COLMAX)} {
-		set viewRow [expr {$bufRow+1}]
-	}
+	fixViewRow $oldBufRow
 	handleRedraw forced
 	return $ret
 }
@@ -1471,15 +1480,13 @@ proc handlePageDown {} {
 proc handleGotoLine {n} {
 	global bufRow viewRow IDX BUFFER
 
+	set oldBufRow $bufRow
 	set bufRow [expr {$n-1}]
-	if {$bufRow < $viewRow} {
-		set viewRow $IDX(ROWMAX)
-	} else {
-		set len [llength $BUFFER]
-		if {$bufRow > $len} {
-			set bufRow [expr {$len-1}]
-		}
+	set len [llength $BUFFER]
+	if {$bufRow >= $len} {
+		set bufRow [expr {$len-1}]
 	}
+	fixViewRow $oldBufRow
 	handleRedraw
 }
 
@@ -1999,6 +2006,24 @@ uplevel 1 {
 				}
 				handleRedraw forced
 				set selecting 1; set found 1; break
+			}
+			"\[24~" {
+				global debughistory
+				set cmd [getInput "Debug:" debughistory]
+				if {$cmd != ""} {
+					historyAppend debughistory $cmd
+					clear
+					goto home
+					hideCursor
+					puts [eval $cmd]
+					flush stdout
+					waitForESC
+					showCursor
+					handleRedraw forced
+				}
+				status ""
+				flush stdout
+				set found 1; break
 			}
 			"OQ" { ;# F2
 				global exechistory execShell filename env IDX keybuffer
