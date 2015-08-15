@@ -1302,6 +1302,16 @@ proc undo {cmd sRow sCol args} {
 	set ret ""
 
 	switch -exact -- $cmd {
+		"C" {
+			lassign $args end
+			handleBlockUncomment $sRow $end
+			set ret "~C $sRow 0 $end"
+		}
+		"~C" {
+			lassign $args end
+			handleBlockComment $sRow $end
+			set ret "C $sRow 0 $end"
+		}
 		"T" {
 			lassign $args end
 			handleDeIndent $sRow $end
@@ -1389,7 +1399,7 @@ proc registerUndo {type args} {
 	set redoBuffer ""
 
 	switch -exact -- $type {
-		"T" - "~T" {
+		"T" - "~T" - "C" - "~C" {
 			lassign $args start end
 			lappend undoBuffer [list $type $start 0 $end]
 		}
@@ -1588,6 +1598,41 @@ proc getSelectionText {} {
 	return [join $copy_lines \n]
 }
 
+proc handleBlockComment {s_row_start s_row_end} {
+	# Find smallest number of whitespace to align our comment to:
+	set comment_col infinity
+	for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
+		set line [lindex $::BUFFER $row]
+		set this_col [lineStart $line]
+		if {$this_col < $comment_col} {
+			set comment_col $this_col
+		}
+	}
+	
+	set pre_comment_col [expr {$comment_col-1}]
+	for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
+		set line [lindex $::BUFFER $row]
+		set line [join [list [
+			string range $line 0 $pre_comment_col
+		] "$::block_comment_symbol " [
+			string range $line $comment_col end
+		]] ""]
+		lset ::BUFFER $row $line
+	}
+}
+
+proc handleBlockUncomment {s_row_start s_row_end} {
+	set re "^\\s*([regexpSafe $::block_comment_symbol] )"
+	for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
+		set line [lindex $::BUFFER $row]
+		
+		if {[regexp -indices -- $re $line -> comment]} {
+			lassign $comment comment_s comment_n
+			lset ::BUFFER $row [string replace $line $comment_s $comment_n ""]
+		}
+	}
+}
+
 proc toggleBlockComment {} {
 	global block_comment_symbol bufSelection BUFFER bufCol bufRow;
 	
@@ -1616,42 +1661,12 @@ proc toggleBlockComment {} {
 	
 	if {$uncommenting} {
 		# Looks like we're uncommenting:
-		
-		for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
-			set line [lindex $BUFFER $row]
-			
-			if {[regexp -indices -- $re $line -> comment]} {
-				lassign $comment comment_s comment_n
-				lset BUFFER $row [string replace $line $comment_s $comment_n ""]
-				registerUndo D $row $comment_s "$block_comment_symbol "
-			}
-		}
+		handleBlockUncomment $s_row_start $s_row_end
+		registerUndo ~C $s_row_start $s_row_end
 	} else {
 		# We're commenting:
-		
-		# Find smallest number of whitespace to align our comment to:
-		set comment_col infinity
-		for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
-			set line [lindex $BUFFER $row]
-			set this_col [lineStart $line]
-			if {$this_col < $comment_col} {
-				set comment_col $this_col
-			}
-		}
-		
-		set pre_comment_col [expr {$comment_col-1}]
-		for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
-			set line [lindex $BUFFER $row]
-			set line [join [list [
-				string range $line 0 $pre_comment_col
-			] "$block_comment_symbol " [
-				string range $line $comment_col end
-			]] ""]
-			lset BUFFER $row $line
-			registerUndo I $row $comment_col $row [
-				expr {$comment_col+[string length $block_comment_symbol]+1}
-			]
-		}
+		handleBlockComment $s_row_start $s_row_end
+		registerUndo C $s_row_start $s_row_end
 	}
 
 	if {[llength $selection_range]} {	
