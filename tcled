@@ -1229,7 +1229,9 @@ proc handleNewline {} {
 
 	registerUndo I $row $col $bufRow $bufCol
 
-	handleRedraw partial
+	if {[string first "\n" $keybuffer] < 0} {
+		handleRedraw partial
+	}
 	incr viewRow
 }
 
