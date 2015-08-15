@@ -1606,10 +1606,10 @@ proc getSelectionText {} {
 	return [join $copy_lines \n]
 }
 
-proc handleBlockComment {s_row_start s_row_end} {
+proc handleBlockComment {start end} {
 	# Find smallest number of whitespace to align our comment to:
 	set comment_col infinity
-	for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
+	for {set row $start} {$row <= $end} {incr row} {
 		set line [lindex $::BUFFER $row]
 		set this_col [lineStart $line]
 		if {$this_col < $comment_col} {
@@ -1618,7 +1618,7 @@ proc handleBlockComment {s_row_start s_row_end} {
 	}
 	
 	set pre_comment_col [expr {$comment_col-1}]
-	for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
+	for {set row $start} {$row <= $end} {incr row} {
 		set line [lindex $::BUFFER $row]
 		set line [join [list [
 			string range $line 0 $pre_comment_col
@@ -2065,10 +2065,10 @@ uplevel 1 {
 							switch $op {
 								c - C {
 									clipboard clear
-									clipboard append -- [string trim $result]
+									clipboard append -- [string trimright $result "\n"]
 								}
 								i - I {
-									set keybuffer [string trim $result]
+									set keybuffer [string trimright $result "\n"]
 									handleRedraw forced
 									showCursor
 									return 1
