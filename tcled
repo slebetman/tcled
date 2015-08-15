@@ -1069,6 +1069,21 @@ proc handleDelete {dir} {
 	return
 }
 
+proc handleDeIndent {start end} {
+	for {set row $start} {$row <= $end} {incr row} {
+		set line [lindex $::BUFFER $row]
+		if {[regexp {^(\s)} $line - whitespace]} {
+			lset ::BUFFER $row [regsub {^\s} $line {}]
+		}
+	}
+}
+
+proc handleIndent {start end} {
+	for {set row $start} {$row <= $end} {incr row} {
+		lset ::BUFFER $row "\t[lindex $::BUFFER $row]"
+	}
+}
+
 proc syntaxHilight {line start} {
 	global hilight IDX
 
@@ -1233,10 +1248,8 @@ proc handleInsert {} {
 			lset ::bufSelection 1 0
 			lset ::bufSelection 3 [string length [lindex $BUFFER $s_row_end]]
 			
-			for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
-				lset BUFFER $row "\t[lindex $BUFFER $row]"
-				registerUndo I $row 0 $row 1
-			}
+			handleIndent $s_row_start $s_row_end
+			registerUndo T $s_row_start $s_row_end
 			return
 		} else {
 			# Tab completion:
@@ -1289,6 +1302,16 @@ proc undo {cmd sRow sCol args} {
 	set ret ""
 
 	switch -exact -- $cmd {
+		"T" {
+			lassign $args end
+			handleDeIndent $sRow $end
+			set ret "~T $sRow 0 $end"
+		}
+		"~T" {
+			lassign $args end
+			handleIndent $sRow $end
+			set ret "T $sRow 0 $end"
+		}
 		"D" {
 			set txt [lindex $args 0]
 			set txt [split $txt "\n"]
@@ -1366,6 +1389,10 @@ proc registerUndo {type args} {
 	set redoBuffer ""
 
 	switch -exact -- $type {
+		"T" - "~T" {
+			lassign $args start end
+			lappend undoBuffer [list $type $start 0 $end]
+		}
 		"I" {
 			foreach {sRow sCol nRow nCol} $args break
 			if {$last == $type} {
@@ -1878,13 +1905,8 @@ uplevel 1 {
 					lset bufSelection 1 0
 					lset bufSelection 3 [string length [lindex $BUFFER $s_row_end]]
 				
-					for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
-						set line [lindex $BUFFER $row]
-						if {[regexp {^(\s)} $line - whitespace]} {
-							lset BUFFER $row [regsub {^\s} $line {}]
-							registerUndo D $row 0 $whitespace
-						}
-					}
+					handleDeIndent $s_row_start $s_row_end
+					registerUndo ~T $s_row_start $s_row_end
 					handleRedraw forced
 				}
 				set selecting 1; set found 1; break
