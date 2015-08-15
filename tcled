@@ -26,7 +26,8 @@ set mousewheelSpeed 4
 set tabGuide 0
 if {[fconfigure stdout -encoding] == "utf-8"} {
 	# Tab guide character for utf8 capable terminals
-	set tabGuideChar \u250a
+	# set tabGuideChar \u2502
+	set tabGuideChar \u2591
 } else {
 	# Tab guide character for plain ASCII terminals
 	set tabGuideChar |
@@ -47,6 +48,9 @@ array set style {
 	none 0 bright 1 dim 2
 	underline 4 blink 5 reverse 7
 }
+
+# set tabGuideColor "$fg(blue);$style(dim)"
+set tabGuideColor "$style(dim)"
 
 # RE for strings and numbers:
 set STRINGS {{(\"(?:\\"|[^"])*")|('(?:\\'|[^'])*')}}
@@ -546,9 +550,7 @@ proc drawMenu {selections {selected ""}} {
 proc selectMenu {selections {selected -1}} {
 	global IDX keybuffer
 	
-	# hide cursor:
-	puts -nonewline [ESC_ ?25l]
-	
+	hideCursor
 	drawMenu $selections $selected
 	
 	while {[set ch [readbuf]] != "\n" && $ch != "\r"} {
@@ -582,8 +584,7 @@ proc selectMenu {selections {selected -1}} {
 		}
 	}
 	
-	# show cursor:
-	puts -nonewline [ESC_ ?25h]
+	showCursor
 	handleRedraw forced
 	
 	return $selected
@@ -2463,7 +2464,7 @@ proc drawSelection {row line selection_range} {
 }
 
 proc drawTabGuides {row {viewline "__NO_MATCH__"}} {
-	global BUFFER tabstop tabGuide fg style tabGuideChar
+	global BUFFER tabstop tabGuide fg style tabGuideChar tabGuideColor
 	set drawBuffer ""
 	
 	if {$tabGuide} {
@@ -2482,7 +2483,7 @@ proc drawTabGuides {row {viewline "__NO_MATCH__"}} {
 			append drawBuffer [RIGHT $tabstop]
 			while {[incr tabs -1] > 0} {
 				append drawBuffer [
-					ESC_ "$fg(blue);$style(dim)m" $tabGuideChar [RESET]
+					ESC_ $tabGuideColor m $tabGuideChar [RESET]
 				]
 				append drawBuffer [RIGHT $partial_tabstop]
 			}
