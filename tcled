@@ -1825,7 +1825,7 @@ proc cursorDown {{mode "normal"}} {
 		
 		if {$mode != "normal"} {
 			set bufCol 0
-			handleRedraw line
+			# handleRedraw line
 		}
 	}
 	endLine
@@ -1846,7 +1846,7 @@ proc cursorUp {{mode "normal"}} {
 		
 		if {$mode != "normal"} {
 			set bufCol [string length [lindex $BUFFER $bufRow]]
-			handleRedraw line
+			# handleRedraw line
 		}
 	}
 	endLine
@@ -1874,8 +1874,11 @@ proc cursorLeft {{mode char}} {
 				return line
 			}
 		}
-		set bufCol 0
-		return line
+		cursorUp continued
+		if {$bufRow > 0 && [string length [lindex $BUFFER $bufRow]]} {
+			cursorLeft word
+		}
+		return full
 	}
 }
 
@@ -1902,8 +1905,8 @@ proc cursorRight {{mode char}} {
 				return line
 			}
 		}
-		set bufCol [string length $line]
-		return line
+		cursorDown continued
+		return full
 	}
 }
 
