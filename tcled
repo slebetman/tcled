@@ -1852,28 +1852,59 @@ proc cursorUp {{mode "normal"}} {
 	endLine
 }
 
-proc cursorLeft {} {
+proc cursorLeft {{mode char}} {
 	global bufRow bufCol BUFFER IDX viewCol viewRow
 
-	if {$bufCol > 0} {
-		incr bufCol -1
+	if {$mode == "char"} {
+		if {$bufCol > 0} {
+			incr bufCol -1
+			return line
+		} else {
+			cursorUp continued
+			return full
+		}
+	} elseif {$mode == "word"} {
+		set words [regexp -inline -indices -all {\S+} [lindex $BUFFER $bufRow]]
+		
+		foreach w [lreverse $words] {
+			lassign $w start end
+			
+			if {$bufCol > $end} {
+				set bufCol $start
+				return line
+			}
+		}
+		set bufCol 0
 		return line
-	} else {
-		cursorUp continued
-		return full
-	}		
+	}
 }
 
-proc cursorRight {} {
+proc cursorRight {{mode char}} {
 	global bufRow bufCol BUFFER IDX viewCol viewRow
 
-	if {$bufCol < [string length [lindex $BUFFER $bufRow]]} {
-		incr bufCol 1
+	if {$mode == "char"} {
+		if {$bufCol < [string length [lindex $BUFFER $bufRow]]} {
+			incr bufCol 1
+			return line
+		} else {
+			cursorDown continued
+			return full
+		}
+	} elseif {$mode == "word"} {
+		set line [lindex $BUFFER $bufRow]
+		set words [regexp -inline -indices -all {\S+} $line]
+		
+		foreach w $words {
+			lassign $w start end
+			
+			if {$bufCol < $start} {
+				set bufCol $start
+				return line
+			}
+		}
+		set bufCol [string length $line]
 		return line
-	} else {
-		cursorDown continued
-		return full
-	}	
+	}
 }
 
 proc updateSelection {} {
@@ -2077,6 +2108,20 @@ uplevel 1 {
 				}
 				handleRedraw forced
 				set selecting 1; set found 1; break
+			}
+			"[1;5D" { ;# ^-left arrow
+				handleRedraw [cursorLeft word]
+				set found 1; break	
+			}
+			"[1;5C" { ;# ^-right arrow
+				handleRedraw [cursorRight word]
+				set found 1; break	
+			}
+			"[1;6D" { ;# ^-shift-left arrow
+				
+			}
+			"[1;6C" { ;# ^-shift-right arrow
+			
 			}
 			"\[24~" {
 				global debughistory
