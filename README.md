@@ -31,7 +31,6 @@ Features:
   multiline C style /* comments */
 - "Normal" key bindings - emulate the behavior of GUI text editors as closely as
   possible so you don't need to learn yet another way of doing things.
-- Auto resizes the editor to fit the terminal window.
 - Implements a simple auto-indenting. When inserting a newline by pressing the
   Enter or Return key the leading whitespace of the previous line is copied and
   automatically inserted.
