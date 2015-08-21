@@ -29,8 +29,8 @@ Features:
 - Basic syntax highlighting. The highlighting is line based and can easily cope
   with Tcl style # comments but because it is line based it can't cope with
   multiline C style /* comments */
-- Implements search, goto and save.
-- Handles Home and End keys.
+- "Normal" key bindings - emulate the behavior of GUI text editors as closely as
+  possible so you don't need to learn yet another way of doing things.
 - Auto resizes the editor to fit the terminal window.
 - Implements a simple auto-indenting. When inserting a newline by pressing the
   Enter or Return key the leading whitespace of the previous line is copied and
@@ -40,7 +40,8 @@ Features:
   This is to improve responsiveness especially on slow machines/connections so
   that you don't accidentally "over-delete" when you press the delete key for 
   too long.
-- Implements undo and redo.
+- All the usual features you'd expect in a simple text editor: undo, redo, search,
+  goto etc.
 - Implements suspending and resuming the editing session.
 - Implements tab completion based on words already in the current document.
 - Supports CTags's tags file (if one is found) so you can look up function and
