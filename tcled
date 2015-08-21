@@ -949,7 +949,7 @@ proc scanAutoComplete {word} {
 proc autoCompleteStatus {} {
 	global autoCompleteMatches IDX
 	
-	if {[llength $autoCompleteMatches]} {
+	if [llength $autoCompleteMatches] {
 		set stat ""
 		foreach n {1 2 3 4 5 6} m $autoCompleteMatches {
 			if {
@@ -970,7 +970,7 @@ proc autoCompleteStatus {} {
 proc substAutoComplete {{select 0}} {
 	global BUFFER bufRow bufCol autoCompleteMatches
 	
-	if {[llength $autoCompleteMatches]} {
+	if [llength $autoCompleteMatches] {
 		set line [lindex $BUFFER $bufRow]
 		
 		set s [currentWord start]
@@ -1003,12 +1003,7 @@ proc handleDelete {dir} {
 
 	set line [lindex $BUFFER $bufRow]
 
-	set selection_range [normalizeSelection]
-	if {[llength $selection_range]} {
-		lassign $selection_range \
-			s_row_start s_col_start \
-			s_row_end s_col_end
-		
+	if [getSelection s_row_start s_col_start s_row_end s_col_end] {
 		set copy_lines [lrange $BUFFER $s_row_start $s_row_end]
 		set first_line [lindex $copy_lines 0]
 		set last_line [lindex $copy_lines end]
@@ -1085,7 +1080,7 @@ proc handleDelete {dir} {
 proc handleDeIndent {start end} {
 	for {set row $start} {$row <= $end} {incr row} {
 		set line [lindex $::BUFFER $row]
-		if {[regexp {^(\s)} $line - whitespace]} {
+		if [regexp {^(\s)} $line - whitespace] {
 			lset ::BUFFER $row [regsub {^\s} $line {}]
 		}
 	}
@@ -1342,15 +1337,8 @@ proc handleInsert {} {
 	if {!$writable} return
 	upvar 1 printbuffer printbuffer
 	
-	set selection_range [normalizeSelection]
-
 	if {$printbuffer == "\t"} {
-		if {[llength $selection_range]} {
-			# Block indent:
-			lassign $selection_range \
-				s_row_start s_col_start \
-				s_row_end s_col_end
-				
+		if [getSelection s_row_start s_col_start s_row_end s_col_end] {
 			lset ::bufSelection 1 0
 			lset ::bufSelection 3 [string length [lindex $BUFFER $s_row_end]]
 			
@@ -1361,7 +1349,7 @@ proc handleInsert {} {
 			# Tab completion:
 			if {$tabCompleteWord == ""} {
 				set tabCompleteWord [currentFragment string]
-				if {[regexp {\w+} $tabCompleteWord tabCompleteWord]} {
+				if [regexp {\w+} $tabCompleteWord tabCompleteWord] {
 					scanAutoComplete $tabCompleteWord
 				} else {
 					set tabCompleteWord ""
@@ -1379,7 +1367,7 @@ proc handleInsert {} {
 	
 	set newstring [getSpaces $printbuffer][string trimleft $printbuffer]
 	
-	if {[llength $selection_range]} {
+	if [llength $::bufSelection] {
 		set insertToSelection 1
 		handleDelete -
 	}
@@ -1393,7 +1381,7 @@ proc handleInsert {} {
 	registerUndo I $bufRow $col $bufRow $bufCol
 
 	set fragment [currentFragment string]
-	if {[regexp {\w+} $fragment fragment]} {
+	if [regexp {\w+} $fragment fragment] {
 		scanAutoComplete $fragment
 	}
 }
@@ -1609,7 +1597,7 @@ proc goToDef {} {
 
 	set tag [currentWord string]
 
-	if {[info exists tags($tag)]} {
+	if [info exists tags($tag)] {
 		if {[llength $tags($tag)] > 2} {
 			set selection {}
 			foreach {sourceFile searchSpec} $tags($tag) {
@@ -1638,10 +1626,10 @@ proc goToDef {} {
 		set myself "$redir {[info nameofexecutable]} {[info script]}"
 		set command ""
 
-		if {[regexp {^(\d+);\"$} $searchSpec - lineNumber]} {
+		if [regexp {^(\d+);\"$} $searchSpec - lineNumber] {
 			set command [list -G $lineNumber]
 		}
-		if {[regexp {^/\^(.+)\$/;\"$} $searchSpec - literal]} {
+		if [regexp {^/\^(.+)\$/;\"$} $searchSpec - literal] {
 			set command [list -F "(?c)^[regexpSafe $literal]\$"]
 		}
 
@@ -1649,7 +1637,7 @@ proc goToDef {} {
 			lappend command -define comeFrom "$filename > "
 
 			cd $tags_root
-			if {[catch "exec $myself {$defFile} $command" err]} {
+			if [catch "exec $myself {$defFile} $command" err] {
 				puts $err
 			}
 			cd $thisDir
@@ -1685,17 +1673,24 @@ proc handleReload {{msg "Revert unsaved changes?"}} {
 	flush stdout
 }
 
+proc getSelection {args} {
+	set s [normalizeSelection]
+	if [llength $s] {
+		foreach up $args var {a b c d} {
+			upvar 1 $up $var
+		}
+		lassign $s a b c d
+		return 1
+	}
+	return 0
+}
+
 proc getSelectionText {} {
 	global BUFFER
 	
 	set copy_lines {}
-	set selection_range [normalizeSelection]
 	
-	if {[llength $selection_range]} {
-		lassign $selection_range \
-			s_row_start s_col_start \
-			s_row_end s_col_end
-		
+	if [getSelection s_row_start s_col_start s_row_end s_col_end] {
 		set copy_lines [lrange $BUFFER $s_row_start $s_row_end]
 		if {[llength $copy_lines] > 1} {
 			lset copy_lines 0 [
@@ -1747,7 +1742,7 @@ proc handleBlockUncomment {s_row_start s_row_end} {
 	for {set row $s_row_start} {$row <= $s_row_end} {incr row} {
 		set line [lindex $::BUFFER $row]
 		
-		if {[regexp -indices -- $re $line -> comment]} {
+		if [regexp -indices -- $re $line - comment] {
 			lassign $comment comment_s comment_n
 			lset ::BUFFER $row [string replace $line $comment_s $comment_n ""]
 		}
@@ -1757,12 +1752,7 @@ proc handleBlockUncomment {s_row_start s_row_end} {
 proc toggleBlockComment {} {
 	global block_comment_symbol bufSelection BUFFER bufCol bufRow;
 	
-	set selection_range [normalizeSelection]
-	if {[llength $selection_range]} {
-		lassign $selection_range \
-			s_row_start s_col_start \
-			s_row_end s_col_end
-	} else {
+	if {![getSelection s_row_start s_col_start s_row_end s_col_end]} {
 		set s_row_start $bufRow
 		set s_row_end $bufRow
 		set s_col_start 0
@@ -1790,7 +1780,7 @@ proc toggleBlockComment {} {
 		registerUndo C $s_row_start $s_row_end
 	}
 
-	if {[llength $selection_range]} {	
+	if [llength $bufSelection] {
 		lset bufSelection 1 0
 		lset bufSelection 3 [string length [lindex $BUFFER $s_row_end]]
 	}
@@ -1958,7 +1948,7 @@ proc cursorRight {{mode char}} {
 proc updateSelection {} {
 	global bufSelection bufRow bufCol
 	
-	if {[llength $bufSelection]} {
+	if [llength $bufSelection] {
 		lset bufSelection 3 $bufCol
 		lset bufSelection 2 $bufRow
 		uplevel 1 {
@@ -2066,12 +2056,7 @@ uplevel 1 {
 			}
 			"\[Z" { ;# shift-tab
 				# De-indent
-				set selection_range [normalizeSelection]
-				if {[llength $selection_range]} {
-					lassign $selection_range \
-						s_row_start s_col_start \
-						s_row_end s_col_end
-					
+				if [getSelection s_row_start s_col_start s_row_end s_col_end] {
 					lset bufSelection 1 0
 					lset bufSelection 3 [
 						string length [lindex $BUFFER $s_row_end]
@@ -2085,7 +2070,7 @@ uplevel 1 {
 			}
 			"/" { ;# alt-/
 				# Block comment/uncomment
-				if {[toggleBlockComment]} {			
+				if [toggleBlockComment] {
 					handleRedraw forced
 				}
 				set selecting 1; set found 1; break
@@ -2157,13 +2142,13 @@ uplevel 1 {
 				set found 1; break
 			}
 			"OQ" { ;# F2
-				if {[handleExec]} {
+				if [handleExec] {
 					return 1
 				}
 				set found 1; break
 			}
 		}
-		if {[regexp {\[(\d+);(\d+);(\d+)M} $seq -> cmd x y]} {
+		if [regexp {\[(\d+);(\d+);(\d+)M} $seq -> cmd x y] {
 			# Mouse events:
 			global bufRow bufCol viewRow IDX bufSelection
 			global mousewheelSpeed mouseMoved clickCount
@@ -2247,7 +2232,7 @@ uplevel 1 {
 		flush stdout
 	}
 	if {!$selecting} {
-		if {[llength $bufSelection]} {
+		if [llength $bufSelection] {
 			set bufSelection {}
 			handleRedraw forced
 		}
@@ -2310,8 +2295,7 @@ uplevel 1 {
 			handleRedraw line
 		}
 		\u0018 { ;# ^x - cut selection
-			set selection_range [normalizeSelection]
-			if {[llength $selection_range]} {
+			if [llength $::bufSelection] {
 				clipboard clear
 				clipboard append -- [handleDelete -]
 				update
@@ -2327,12 +2311,7 @@ uplevel 1 {
 		}
 		\u0004 { ;# ^d - delete line(s)
 			if {$bufRow < [llength $BUFFER] && $writable} {
-				set selection_range [normalizeSelection]
-				if {[llength $selection_range]} {
-					lassign $selection_range \
-						s_row_start s_col_start \
-						s_row_end s_col_end
-						
+				if [getSelection s_row_start s_col_start s_row_end s_col_end] {
 					set oldlines [lrange $BUFFER $s_row_start $s_row_end]
 					set BUFFER [lreplace $BUFFER $s_row_start $s_row_end]
 					
@@ -2384,7 +2363,7 @@ uplevel 1 {
 				set n [expr {$bufRow+1}]
 			}
 
-			if {[string is integer -strict $n]} {
+			if [string is integer -strict $n] {
 				set theLine [lindex $BUFFER [expr {$n-1}]]
 				historyAppend gotohistory "$n : [string trim $theLine]"
 
@@ -2420,7 +2399,7 @@ uplevel 1 {
 		\u001b { ;# ESC - handle escape sequences
 			after 10
 			append keybuffer [read stdin]
-			if {[handleEscapes]} return
+			if [handleEscapes] return
 		}
 		\u0016 { ;# ^v - paste
 			catch {set keybuffer [clipboard get]}
@@ -2479,7 +2458,7 @@ proc linerange {row} {
 proc normalizeSelection {} {
 	global bufSelection
 	
-	if {[llength $bufSelection]} {
+	if [llength $bufSelection] {
 		lassign $bufSelection row1 col1 row2 col2
 		if {$row1 == $row2} {
 			if {$col1 > $col2} {
@@ -2498,7 +2477,7 @@ proc normalizeSelection {} {
 proc drawSelection {row line selection_range} {
 	set drawBuffer ""
 	
-	if {[llength $selection_range]} {
+	if [llength $selection_range] {
 		lassign $selection_range \
 			s_row_start s_col_start \
 			s_row_end s_col_end
@@ -2678,7 +2657,7 @@ proc handleRedraw {{mode "full"}} {
 
 proc lastModified {} {
 	global filename
-	if {[file exists $filename]} {
+	if [file exists $filename] {
 		return [file mtime $filename]
 	}
 	return 0
@@ -2709,7 +2688,7 @@ proc edittext {} {
 
 	while {$char != "\u0011"} {
 		append keybuffer [read stdin]
-		if {[eof stdin]} {return done}
+		if [eof stdin] {return done}
 		if {$keybuffer == ""} {
 			set now [clock seconds]
 			if {$now != $timestamp} {
@@ -2797,8 +2776,8 @@ proc getRowColMax {} {
 proc openFile {} {
 	global BUFFER filename writable
 
-	if {[file isfile $filename]} {
-		if {[file readable $filename]} {
+	if [file isfile $filename] {
+		if [file readable $filename] {
 			set mode ""
 			set f [open $filename r]
 			set data [read $f]
@@ -2837,7 +2816,7 @@ proc saveFile {} {
 
 	if {!$modified} return
 
-	if {[getConfirmation "Save '$filename'?"]} {
+	if [getConfirmation "Save '$filename'?"] {
 		set outfile [open $filename w ]
 		for {set i 0} {$i<[expr [llength $BUFFER]-1]} {incr i} {
 			puts $outfile [lindex $BUFFER $i]
@@ -2847,7 +2826,7 @@ proc saveFile {} {
 		status " Saved '$filename' ([llength $BUFFER] lines)"
 
 		# Delete suspended file:
-		if {[file exists $filename.tsuspend]} {
+		if [file exists $filename.tsuspend] {
 			file delete $filename.tsuspend
 		}
 		
@@ -2982,7 +2961,7 @@ proc initSyntaxRules {fileext} {
 			{$STRING_STYLE} $STRING_STYLE \
 			{$NUMBER_STYLE} $NUMBER_STYLE
 	] $syntaxRules] {
-		if {[regexp $filepattern $fileext]} {
+		if [regexp $filepattern $fileext] {
 			foreach {pattern attr} $rule {
 				lappend hilight $pattern [subst $attr]
 			}
@@ -2991,7 +2970,7 @@ proc initSyntaxRules {fileext} {
 	
 	# Set block comment style
 	foreach {filepattern rule} $blockCommentRules {
-		if {[regexp $filepattern $fileext]} {
+		if [regexp $filepattern $fileext] {
 			set block_comment_symbol $rule
 			break
 		}
@@ -3043,7 +3022,7 @@ while {[llength $cmdline]} {
 			exit
 		}
 		default {
-			if {[regexp {^\+(\d+)$} $arg - line]} {
+			if [regexp {^\+(\d+)$} $arg - line] {
 				lappend init_commands "handleGotoLine $line"
 			} else {
 				lappend argv $arg
