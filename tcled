@@ -1097,6 +1097,41 @@ proc handleIndent {start end} {
 	}
 }
 
+proc handleArrowSelect {cmd} {
+	global bufSelection bufRow bufCol
+	
+	startSelection
+	$cmd
+	lset bufSelection 2 $bufRow
+	lset bufSelection 3 [expr $bufCol-1]
+	handleRedraw forced
+}
+
+proc handleLeftArrowSelect {{mode char}} {
+	global bufSelection bufRow bufCol
+	
+	startSelection -1
+	cursorLeft $mode
+	lset bufSelection 2 $bufRow
+	lassign $bufSelection rs cs rn cn
+	if {$rn<$rs||($rs==$rn&&($cn<=$cs))} {
+		lset bufSelection 3 $bufCol
+	} else {
+		lset bufSelection 3 [expr $bufCol-1]
+	}
+	handleRedraw forced
+}
+
+proc handleRightArrowSelect {{mode char}} {
+	global bufSelection bufRow bufCol
+
+	startSelection
+	cursorRight $mode
+	lset bufSelection 2 $bufRow
+	lset bufSelection 3 [expr $bufCol-1]
+	handleRedraw forced
+}
+
 proc syntaxHilight {line start} {
 	global hilight IDX
 
@@ -1360,6 +1395,16 @@ proc handleInsert {} {
 	set fragment [currentFragment string]
 	if {[regexp {\w+} $fragment fragment]} {
 		scanAutoComplete $fragment
+	}
+}
+
+proc startSelection {{colAdjust 0}} {
+	global bufSelection bufRow bufCol
+	if {![llength $bufSelection]} {
+		set bufSelection [list \
+			$bufRow [expr $bufCol+$colAdjust] \
+			$bufRow [expr $bufCol+$colAdjust]
+		]
 	}
 }
 
@@ -2062,54 +2107,19 @@ uplevel 1 {
 				set found 1; break
 			}
 			"\[1;2A" { ;# shift-up arrow
-				if {![llength $bufSelection]} {
-					set bufSelection [list $bufRow $bufCol $bufRow $bufCol]
-				}
-				cursorUp
-				lset bufSelection 2 $bufRow
-				lset bufSelection 3 [expr $bufCol-1]
-				handleRedraw forced
+				handleArrowSelect cursorUp
 				set selecting 1; set found 1; break
 			}
 			"\[1;2B" { ;# shift-down arrow
-				if {![llength $bufSelection]} {
-					set bufSelection [list $bufRow $bufCol $bufRow $bufCol]
-				}
-				cursorDown
-				lset bufSelection 2 $bufRow
-				lset bufSelection 3 [expr $bufCol-1]
-				handleRedraw forced
+				handleArrowSelect cursorDown
 				set selecting 1; set found 1; break
 			}
 			"\[1;2C" { ;# shift-right arrow
-				if {![llength $bufSelection]} {
-					set bufSelection [list $bufRow $bufCol $bufRow $bufCol]
-				}
-				cursorRight
-				
-				lset bufSelection 2 $bufRow
-				lset bufSelection 3 [expr $bufCol-1]
-				handleRedraw forced
+				handleRightArrowSelect
 				set selecting 1; set found 1; break
 			}
 			"\[1;2D" { ;# shift-left arrow
-				if {![llength $bufSelection]} {
-					set bufSelection [list \
-						$bufRow [expr $bufCol-1] \
-						$bufRow [expr $bufCol-1]
-					]
-				}
-				cursorLeft
-				
-				lset bufSelection 2 $bufRow
-				
-				lassign $bufSelection rs cs rn cn
-				if {$rn<$rs||($rs==$rn&&($cn<=$cs))} {
-					lset bufSelection 3 $bufCol
-				} else {
-					lset bufSelection 3 [expr $bufCol-1]
-				}
-				handleRedraw forced
+				handleLeftArrowSelect
 				set selecting 1; set found 1; break
 			}
 			"[1;5D" { ;# ^-left arrow
@@ -2121,10 +2131,12 @@ uplevel 1 {
 				set found 1; break	
 			}
 			"[1;6D" { ;# ^-shift-left arrow
-				
+				handleLeftArrowSelect word
+				set selecting 1; set found 1; break	
 			}
 			"[1;6C" { ;# ^-shift-right arrow
-			
+				handleRightArrowSelect word
+				set selecting 1; set found 1; break
 			}
 			"\[24~" {
 				global debughistory
