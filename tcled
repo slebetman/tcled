@@ -2163,7 +2163,7 @@ uplevel 1 {
 			
 			switch $cmd {
 				97 { ;# mousewheel down
-					if {$viewRow < ([llength $BUFFER] - 1)} {
+					if {$bufRow < ([llength $BUFFER] + $viewRow - $IDX(ROWMAX))} {
 						incr viewRow -$mousewheelSpeed
 					}
 					for {set x 0} {$x < $mousewheelSpeed} {incr x} cursorDown
@@ -2171,7 +2171,7 @@ uplevel 1 {
 					set found 1; break
 				}
 				96 { ;# mousewheel up
-					if {$viewRow > ($IDX(ROWMAX) - 1)} {
+					if {$bufRow > $viewRow} {
 						incr viewRow $mousewheelSpeed
 					}
 					for {set x 0} {$x < $mousewheelSpeed} {incr x} cursorUp
