@@ -2754,8 +2754,12 @@ proc edittext {} {
 
 proc getRowColMax {} {
 	uplevel 1 {
-		if {![catch {exec stty -a} err]
-			&& [regexp {rows (\d+); columns (\d+)} $err -> rows cols]} {
+		if {![catch {exec stty -a} err]} {
+			if {![regexp {rows (\d+); columns (\d+)} $err -> rows cols]} {
+				if {![regexp {(\d+) rows; (\d+) columns;} $err -> rows cols]} {
+					return
+				}
+			}
 			if {$rows != 0 && $cols != 0} {
 				if {$rows != $IDX(ROWMAX)} {
 					set IDX(ROWMAX) $rows
