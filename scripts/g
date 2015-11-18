@@ -16,6 +16,6 @@ case "$1" in
 		go build
 		;;
 	*)
-		xterm -geometry 120x30 -e 'go run `ls *go|grep -v _test`' &> /dev/null &!
+		xterm -geometry 120x30 -e 'go run `ls *go|grep -v _test`' &> /dev/null &
 		;;
 esac
