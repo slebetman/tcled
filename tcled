@@ -1176,6 +1176,42 @@ proc syntaxHilight {line start} {
 	return $line
 }
 
+proc un_ansi {data} {
+	# --------------------------------------------------------------------------
+	# (c) 2015 Stefan Finzel. From http://wiki.tcl.tk/9673
+	# --------------------------------------------------------------------------
+	set txt {}
+	while {[string length $data]} {
+		set match { }
+		switch -regexp -- $data {
+			"^\\x1b\]50;SetProfile=\\w+\a" {
+				# special case for Iterm2 on Mac
+				regexp "^\\x1b\]50;SetProfile=\\w+\a" $data match
+			}
+			{^\x1b(\[|\(|\))[;?0-9]*[0-9A-Za-z]} {
+				regexp -- {^\x1b(\[|\(|\))[;?0-9]*[0-9A-Za-z]} $data match
+				append txt "\n"
+			}
+			{^(.+?)\x1b} {
+				regexp -- {^(.+?)\x1b} $data -> match
+				# handle special escape sequences
+				regsub -all -- {\\([\\\[\]])} $match {\1} raw_match
+				append txt $raw_match
+			}
+			{^\x1b} {
+				# do nothing
+			}
+			default {
+				set match $data
+				append txt $match
+			}
+		}
+		set data [string range $data [string length $match] end]
+	}
+	
+	return $txt
+}
+
 proc handleExec {} {
 	global exechistory execShell filename env IDX keybuffer
 	set ret 0
@@ -1211,16 +1247,17 @@ proc handleExec {} {
 			catch {close $pipe}
 		}
 		set result [join $result \n]
+		set ascii [un_ansi $result]
 		
-		if {$result != ""} {
+		if {[string trim $ascii] != ""} {
 			drawStatus "Press ESC to exit this screen" 1
 			keyInput {[C]opy to clipboard or [I]nsert to document?} {
 				c {
 					clipboard clear
-					clipboard append -- [string trimright $result "\n"]
+					clipboard append -- [string trimright $ascii "\n"]
 				}
 				i {
-					set keybuffer [string trimright $result "\n"]
+					set keybuffer [string trimright $ascii "\n"]
 					set ret 1
 				}
 			}
