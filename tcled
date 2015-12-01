@@ -1079,17 +1079,23 @@ proc handleDelete {dir} {
 }
 
 proc handleDeIndent {start end} {
+	global usetabs tabstop
+
 	for {set row $start} {$row <= $end} {incr row} {
 		set line [lindex $::BUFFER $row]
 		if [regexp {^(\s)} $line - whitespace] {
-			lset ::BUFFER $row [regsub {^\s} $line {}]
+			if {$usetabs} {
+				lset ::BUFFER $row [regsub {^\s} $line {}]
+			} else {
+				lset ::BUFFER $row [regsub "^(\t| {1,$tabstop})" $line {}]
+			}
 		}
 	}
 }
 
 proc handleIndent {start end} {
 	for {set row $start} {$row <= $end} {incr row} {
-		lset ::BUFFER $row "\t[lindex $::BUFFER $row]"
+		lset ::BUFFER $row "[TAB][lindex $::BUFFER $row]"
 	}
 }
 
