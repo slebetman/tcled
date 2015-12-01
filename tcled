@@ -2853,6 +2853,7 @@ proc openFile {} {
 				status "Opened: $filename$openMode, READ ONLY!"
 			}
 			loadTags [file normalize $filename]
+			loadConfig [file normalize $filename]
 		} else {
 			puts "Can't read file: \"$filename\""
 			exit
@@ -2896,6 +2897,25 @@ proc bufferModified {args} {
 
 array set tags {}
 set tags_root [pwd]
+
+proc loadConfig {fileName} {
+	while {[set dir [file dirname $fileName]] != "/"} {
+		if {[file isfile $dir/.tcled.conf] && [file readable $dir/.tcled.conf]} {
+			set f [open $dir/.tcled.conf]
+			set txt [read $f]
+			close $f
+
+			foreach line [split $txt \n] {
+				if {[regexp {(\w+)\s+(\w+)} $line -> var val]} {
+					uplevel #0 "set $var $val"
+				}
+			}
+
+			return
+		}
+		set fileName $dir
+	}
+}
 
 proc loadTags {fileName} {
 	global tags tags_root
