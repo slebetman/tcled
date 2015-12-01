@@ -2169,7 +2169,7 @@ uplevel 1 {
 				handleRightArrowSelect word
 				set selecting 1; set found 1; break
 			}
-			"\[24~" {
+			"\[24~" { ;# F12
 				global debughistory
 				set cmd [getInput "Debug:" debughistory]
 				if {$cmd != ""} {
@@ -2177,7 +2177,7 @@ uplevel 1 {
 					clear
 					goto home
 					hideCursor
-					puts [eval $cmd]
+					puts [uplevel #0 $cmd]
 					flush stdout
 					waitForESC
 					showCursor
