@@ -74,7 +74,7 @@ set syntaxRules {
 	}
 
 	# C and js comments
-	{^(c|cc|cpp|h|hh|js|fe|fec|feh|osm|go)$|\ynode(js)?\y|\yferite\y} {
+	{^(c|cc|cpp|h|hh|js|fe|fec|feh|osm|go|php|java)$|\ynode(js)?\y|\yferite\y} {
 		# Comments:
 		{(?:^|[^\\])//.*$} $COMMENT_FORMAT
 		
@@ -322,7 +322,7 @@ set syntaxRules {
 }
 
 set blockCommentRules {
-	{^(c|cc|cpp|h|hh|js|fe|fec|feh|osm|go)$|\ynode(js)?\y|\yferite\y} "//"
+	{^(c|cc|cpp|h|hh|js|fe|fec|feh|osm|go|php|java)$|\ynode(js)?\y|\yferite\y} "//"
 	{^(asn|sql)$} "--"
 	{} "#"
 }
@@ -1368,6 +1368,14 @@ proc handleNewline {} {
 	incr viewRow
 }
 
+proc TAB {} {
+	global usetabs tabstop
+	if {$usetabs} {
+		return "\t"
+	}
+	return [string repeat " " $tabstop]
+}
+
 proc handleInsert {} {
 	global BUFFER bufRow bufCol viewRow tabCompleteWord
 	global undoBuffer redoBuffer writable insertToSelection
@@ -1398,6 +1406,7 @@ proc handleInsert {} {
 				return
 			}
 		}
+		set printbuffer [TAB]
 	} else {
 		set tabCompleteWord ""
 	}
