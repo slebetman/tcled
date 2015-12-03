@@ -171,3 +171,22 @@ as `{$style(bright);$fg(green)}`.
 Also, due to the way the renderig engine works, the syntax hilighting rules
 cannot distinguish between tabs and spaces. So for the purpose of writing the
 syntax regexp `" "`, `"\s"`, `"\t"` and `"[[:space:]]"` are synonymous.
+
+Config Files:
+-------------
+If the file `.tcled.conf` exists in the current directory or in any parent
+directories then it will be read as a config file. This mechanism means that
+you can have different configurations for different projects.
+
+The syntax of the config file is simply a list of `variable` and `value` on
+each line. Empty lines are ignored. Unfortunately comments are not supported
+at the moment.
+
+The following settings are available:
+
+- `execShell` - Shell to use to execute shell commands (F2). Defaults to `/bin/bash`.
+- `tabstop` - Number of spaces per tab. Default is `4`.
+- `usetabs` - Use tabs or spaces. Default is `true` which means use tabs instead of spaces.
+- `searchcase` - Is search case sensitive? Defaults to `false`.
+- `tabGuide` - Turn on tab guide on or off. Defaults to `false` which turns it off.
+
