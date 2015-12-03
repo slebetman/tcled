@@ -2310,28 +2310,36 @@ uplevel 1 {
 			global undoBuffer redoBuffer filename tags gotohistory
 			clear
 			goto home
-			puts $::ABOUT
+			puts [string trim $::ABOUT]
+			
+			puts [REV "Info:" [RESET]]
 			puts "File: $filename"
 			puts "Selection: [normalizeSelection]"
 			puts "Autocomplete: $::autoCompleteMatches"
+			
+			puts [REV "Settings:" [RESET]]
+			puts "execShell: $::execShell"
+			puts "tabstop: $::tabstop"
+			puts "usetabs: $::usetabs"
+			puts "searchcase: $::searchcase"
+			puts "mousewheelSpeed: $::mousewheelSpeed"
+			puts "tabGuide: $::tabGuide"
+			puts "tabGuideChar: $::tabGuideChar"
+			
 			puts [REV "Undo buffer ([llength $undoBuffer] actions):" [RESET]]
-			if {[llength $undoBuffer] > 10} {puts ...}
+			if {[llength $undoBuffer] > 5} {puts ...}
 			foreach x [lrange $undoBuffer end-5 end] {
 				puts $x
 			}
 			puts [REV "Redo buffer ([llength $redoBuffer] actions):" [RESET]]
-			if {[llength $redoBuffer] > 10} {puts ...}
+			if {[llength $redoBuffer] > 5} {puts ...}
 			foreach x [lrange $redoBuffer end-5 end] {
 				puts $x
 			}
 			puts [REV "Goto history ([llength $gotohistory]):" [RESET]]
-			if {[llength $gotohistory] > 10} {puts ...}
+			if {[llength $gotohistory] > 5} {puts ...}
 			foreach x [lrange $gotohistory end-5 end] {
 			  puts $x
-			}
-			puts [REV "CTags ([array size tags] tags):" [RESET]]
-			foreach {x y} [lrange [array get tags] 0 13] {
-			  puts "$x -> [lindex $y 0]"
 			}
 			idx $viewRow $viewCol
 			
