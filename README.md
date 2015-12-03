@@ -190,3 +190,8 @@ The following settings are available:
 - `searchcase` - Is search case sensitive? Defaults to `false`.
 - `tabGuide` - Turn on tab guide on or off. Defaults to `false` which turns it off.
 
+Example config file:
+
+    usetabs false
+	tabstop 8
+
