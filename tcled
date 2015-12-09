@@ -2114,12 +2114,15 @@ uplevel 1 {
 					lset bufSelection 3 [
 						string length [lindex $BUFFER $s_row_end]
 					]
-				
-					handleDeIndent $s_row_start $s_row_end
-					registerUndo ~T $s_row_start $s_row_end
-					handleRedraw forced
+					set selecting 1
+				} else {
+					set s_row_start $bufRow
+					set s_row_end $bufRow
 				}
-				set selecting 1; set found 1; break
+				handleDeIndent $s_row_start $s_row_end
+				registerUndo ~T $s_row_start $s_row_end
+				handleRedraw forced
+				set found 1; break
 			}
 			"/" { ;# alt-/
 				# Block comment/uncomment
