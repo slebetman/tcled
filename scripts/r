@@ -1,15 +1,19 @@
-#! /bin/bash
+#! /usr/bin/env tclsh
 
-# Search and replace implemented with sed
+set SEARCHTERM [lindex $argv 0]
+set REPLACEMENT [lindex $argv 1]
 
-SEARCHTERM=`echo "$1" | sed 's|/|\\/|g'`
-REPLACEMENT=`echo "$2" | sed 's|/|\\/|g'`
-
-if [ "$s" != "" ];then
-	echo "$s" | sed "s/$SEARCHTERM/$REPLACEMENT/g"
-elif [ "$f" != "" ];then
-	temp=`mktemp`
-	cat "$f" | sed "s/$SEARCHTERM/$REPLACEMENT/g" > $temp
-	mv "$f" "$f".old
-	mv $temp "$f"
-fi
+if {[info exists env(s)]} {
+	puts [regsub -all -lineanchor -- $SEARCHTERM $env(s) $REPLACEMENT]
+} elseif {[info exists env(f)]} {
+	set f [open $env(f)]
+	set txt [read $f]
+	close $f
+	
+	set txt [regsub -all -lineanchor -- $SEARCHTERM $env(s) $REPLACEMENT]
+	file copy $env(f) $env(f).old
+	
+	set f [open $env(f) w]
+	puts $f $txt
+	close $f
+}
