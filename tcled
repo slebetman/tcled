@@ -310,10 +310,10 @@ set syntaxRules {
 	}
 
 	# HTML:
-	{htm|xml|svg} {
+	{htm|xml|svg|php} {
 		{<!DOCTYPE.*?>} {$bg(blue);$fg(yellow)}
 		{<!-.*?->} $COMMENT_FORMAT
-		{<.*?>} {$style(bright);$fg(cyan)}
+		{<\w+|>|</\w+>} {$style(bright);$fg(cyan)}
 	}
 
 	{^asn$} {
