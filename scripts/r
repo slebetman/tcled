@@ -1,5 +1,7 @@
 #! /usr/bin/env tclsh
 
+# Search and replace (using regsub)
+
 set SEARCHTERM [lindex $argv 0]
 set REPLACEMENT [lindex $argv 1]
 

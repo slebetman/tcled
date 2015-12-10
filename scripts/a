@@ -5,8 +5,6 @@
 if [ "$s" != "" ];then
 	echo "$s" | gawk "$1"
 elif [ "$f" != "" ];then
-	temp=`mktemp`
-	cat "$f" | gawk "$1" > $temp
-	mv "$f" "$f".old
-	mv $temp "$f"
+	cp "$f" "$f".old
+	cat "$f" | gawk "$1" > "$f"
 fi

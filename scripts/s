@@ -5,8 +5,6 @@
 if [ "$s" != "" ];then
 	echo "$s" | sed "$1"
 elif [ "$f" != "" ];then
-	temp=`mktemp`
-	cat "$f" | sed "$1" > $temp
-	mv "$f" "$f".old
-	mv $temp "$f"
+	cp "$f" "$f".old
+	cat "$f" | sed "$1" > "$f"
 fi
