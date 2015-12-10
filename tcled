@@ -374,7 +374,22 @@ if {[info commands lassign] == ""} {
 # Start Tk for clipboard
 # support if possible
 ###############################
-if {[catch {
+if {$tcl_platform(os) == "Darwin"} {
+	# Don't use Tk on Mac, use pbcopy, pbpaste instead
+	proc clipboard {cmd {ignore ""} {arg ""}} {
+		switch $cmd {
+			append {
+				if {![catch {open "| pbcopy" w} f]} {
+					puts $f $arg
+					close $f
+				}
+			}
+			get {
+				return [exec pbpaste]
+			}
+		}
+	}
+} elseif {[catch {
 	package require Tk
 	wm overrideredirect . 1
 	wm withdraw .
