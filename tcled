@@ -580,7 +580,7 @@ proc selectMenu {selections {selected -1}} {
 	
 	while {[set ch [readbuf]] != "\n" && $ch != "\r"} {
 		if {$ch == ""} {
-			after 40
+			waitForKey
 			continue
 		}
 		if {$ch == [ESC]} {
@@ -686,7 +686,7 @@ proc getInput {{txt ""} {historybuffer ""}} {
 	set inputCursor 0
 	while {[set ch [readbuf]] != "\n" && $ch != "\r"} {
 		if {$ch == ""} {
-			after 40
+			waitForKey
 			continue
 		}
 		if {$ch == [ESC]} {
@@ -2747,6 +2747,16 @@ proc lastModified {} {
 ################################
 # main()
 ################################
+set keyEvent ""
+fileevent stdin readable {
+	set ::keyEvent ""
+	append ::keybuffer [read stdin]
+}
+
+proc waitForKey {} {
+	vwait ::keyEvent
+}
+
 proc edittext {} {
 	global BUFFER IDX viewRow viewCol bufRow bufCol writable tabCompleteWord
 	global init_commands keybuffer mtime insertToSelection
@@ -2769,7 +2779,7 @@ proc edittext {} {
 	}
 
 	while {$char != "\u0011"} {
-		append keybuffer [read stdin]
+		waitForKey
 		if [eof stdin] {return done}
 		if {$keybuffer == ""} {
 			set now [clock seconds]
@@ -2807,11 +2817,7 @@ proc edittext {} {
 					"Discard unsaved changes and reload?"
 				} " "]
 			}
-			fileevent stdin readable {
-				set ::keyEvent ""
-				append ::keybuffer [read stdin]
-			}
-			vwait ::keyEvent
+			waitForKey
 			update
 			continue
 		}
