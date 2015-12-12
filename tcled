@@ -423,6 +423,15 @@ if {$tcl_platform(os) == "Darwin"} {
 ################################
 # Utilities
 ################################
+proc drainStdin {} {
+	# attempt to get all escape characters
+	# on slow connections/terminals:
+	if {$::tcl_platform(os) != "Darwin"} {
+		after 10
+	}
+	append ::keybuffer [read stdin]
+}
+
 proc shift {ls} {
 	upvar 1 $ls LIST
 	set ret [lindex $LIST 0]
@@ -571,14 +580,11 @@ proc selectMenu {selections {selected -1}} {
 	
 	while {[set ch [readbuf]] != "\n" && $ch != "\r"} {
 		if {$ch == ""} {
-			after 40
+			waitForKey
 			continue
 		}
 		if {$ch == [ESC]} {
-			# attempt to get all escape characters
-			# on slow connections/terminals:
-			after 10
-			append keybuffer [read stdin]
+			drainStdin
 
 			# escape:
 			if {$keybuffer == ""} {
@@ -680,14 +686,11 @@ proc getInput {{txt ""} {historybuffer ""}} {
 	set inputCursor 0
 	while {[set ch [readbuf]] != "\n" && $ch != "\r"} {
 		if {$ch == ""} {
-			after 40
+			waitForKey
 			continue
 		}
 		if {$ch == [ESC]} {
-			# attempt to get all escape characters
-			# on slow connections/terminals:
-			after 10
-			append keybuffer [read stdin]
+			drainStdin
 
 			# escape:
 			if {$keybuffer == ""} {
@@ -2476,8 +2479,7 @@ uplevel 1 {
 			handleDelete -
 		}
 		\u001b { ;# ESC - handle escape sequences
-			after 10
-			append keybuffer [read stdin]
+			drainStdin
 			if [handleEscapes] return
 		}
 		\u0016 { ;# ^v - paste
@@ -2745,6 +2747,16 @@ proc lastModified {} {
 ################################
 # main()
 ################################
+set keyEvent ""
+fileevent stdin readable {
+	set ::keyEvent ""
+	append ::keybuffer [read stdin]
+}
+
+proc waitForKey {} {
+	vwait ::keyEvent
+}
+
 proc edittext {} {
 	global BUFFER IDX viewRow viewCol bufRow bufCol writable tabCompleteWord
 	global init_commands keybuffer mtime insertToSelection
@@ -2761,12 +2773,13 @@ proc edittext {} {
 	set printbuffer ""
 	set timestamp [clock seconds]
 	set prevRow $bufRow
+	set ::keyEvent ""
 	foreach cmd $init_commands {
 		eval $cmd
 	}
 
 	while {$char != "\u0011"} {
-		append keybuffer [read stdin]
+		waitForKey
 		if [eof stdin] {return done}
 		if {$keybuffer == ""} {
 			set now [clock seconds]
@@ -2804,7 +2817,7 @@ proc edittext {} {
 					"Discard unsaved changes and reload?"
 				} " "]
 			}
-			after 40
+			waitForKey
 			update
 			continue
 		}
