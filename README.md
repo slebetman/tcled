@@ -97,7 +97,9 @@ The "^" character below denotes pressing the Ctrl key.
 - `^y` : Redo the last undo.
 - `^z` : Undo the previous edit.
 - `^Down Arrow` : Go to definition of word under cursor (if found in tags file).
+- `alt-shift->` : Go to definition (alternative for ^Down Arrow)
 - `^Up Arrow` : Return from definition.
+- `alt-shift-<` : Return form definition (alternative for ^Up Arrow)
 - `^Left Arrow` : Go to previous word.
 - `^Right Arrow` : Go to next word.
 - `Tab` : When typing autocompletes the current word.

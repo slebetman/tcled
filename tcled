@@ -2151,11 +2151,13 @@ uplevel 1 {
 				}
 				set selecting 1; set found 1; break
 			}
-			"\[1;5B" { ;# ^-down arrow
+			">" -
+			"\[1;5B" { ;# ^-down arrow or alt-> (alt-shift-. depending on keyboard)
 				goToDef
 				set found 1; break
 			}
-			"\[1;5A" { ;# ^-up arrow
+			"<" -
+			"\[1;5A" { ;# ^-up arrow or alt-< (alt-shift-, depending on keyboard)
 			            # Return from Def
 			            # This is basically the same as quit but
 			            # only when we come from another file.
