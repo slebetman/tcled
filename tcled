@@ -1705,6 +1705,7 @@ proc goToDef {} {
 		}
 
 		if {$command != ""} {
+			fconfigure stdin -blocking 1
 			lappend command -define comeFrom "$filename > "
 
 			cd $tags_root
@@ -1724,6 +1725,7 @@ proc goToDef {} {
 				puts -nonewline [ESC_ ?1002h][ESC_ ?1015h]
 			}
 
+			fconfigure stdin -blocking 0
 			read stdin
 			status ""
 			handleRedraw forced
