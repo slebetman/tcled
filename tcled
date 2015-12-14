@@ -2757,6 +2757,20 @@ proc waitForKey {} {
 	vwait ::keyEvent
 }
 
+proc checkFileChanged {} {
+	global mtime
+
+	set lastModified [lastModified]
+	if {$lastModified != $mtime} {
+		set mtime $lastModified
+		handleReload [join {
+			"File on disk has changed." 
+			"Discard unsaved changes and reload?"
+		} " "]
+	}
+	after 1000 checkFileChanged
+}
+
 proc edittext {} {
 	global BUFFER IDX viewRow viewCol bufRow bufCol writable tabCompleteWord
 	global init_commands keybuffer mtime insertToSelection
@@ -2766,6 +2780,7 @@ proc edittext {} {
 	set char ""				 ; # last char received
 	set line [lindex $BUFFER $bufRow] ; # line data of current line
 	set mtime [lastModified]
+	checkFileChanged
 
 	handleRedraw
 	goto home; flush stdout
@@ -2781,66 +2796,55 @@ proc edittext {} {
 	while {$char != "\u0011"} {
 		waitForKey
 		if [eof stdin] {return done}
-		if {$keybuffer == ""} {
-			set now [clock seconds]
-			if {$now != $timestamp} {
-				set ::clickCount 0
-				set timestamp $now
-				set changed 0
-				getRowColMax
-				if {$changed} {
-					status
-					idx $bufRow $bufCol
-					handleRedraw forced
-				}
-			}
-			if {$printbuffer != ""} {
+		while {$keybuffer != ""} {
+			set char [readbuf]
+	
+			if {[string is print $char] || $char == "\t"} {
+				append printbuffer $char
+			} elseif {$char == "\n" || $char == "\r"} {
 				handleInsert
-				if {[llength $::bufSelection] || $insertToSelection} {
-					set insertToSelection 0
-					handleRedraw forced
-				} else {
-					if {$prevRow != $bufRow} {
-						set prevRow $bufRow
+				handleNewline
+				if {$keybuffer == ""} {
+					if {$insertToSelection} {
+						set insertToSelection 0
+						handleRedraw forced
+					} else {
 						handleRedraw
 					}
-					handleRedraw edit
 				}
 				set printbuffer ""
+			} else {
+				handleControls
+				set prevRow $bufRow
 			}
-			# Check if the file on disk has changed
-			set lastModified [lastModified]
-			if {$lastModified != $mtime} {
-				set mtime $lastModified
-				handleReload [join {
-					"File on disk has changed." 
-					"Discard unsaved changes and reload?"
-				} " "]
-			}
-			waitForKey
-			update
-			continue
 		}
-		set char [readbuf]
-
-		if {[string is print $char] || $char == "\t"} {
-			append printbuffer $char
-		} elseif {$char == "\n" || $char == "\r"} {
+		set now [clock seconds]
+		if {$now != $timestamp} {
+			set ::clickCount 0
+			set timestamp $now
+			set changed 0
+			getRowColMax
+			if {$changed} {
+				status
+				idx $bufRow $bufCol
+				handleRedraw forced
+			}
+		}
+		if {$printbuffer != ""} {
 			handleInsert
-			handleNewline
-			if {$keybuffer == ""} {
-				if {$insertToSelection} {
-					set insertToSelection 0
-					handleRedraw forced
-				} else {
+			if {[llength $::bufSelection] || $insertToSelection} {
+				set insertToSelection 0
+				handleRedraw forced
+			} else {
+				if {$prevRow != $bufRow} {
+					set prevRow $bufRow
 					handleRedraw
 				}
+				handleRedraw edit
 			}
 			set printbuffer ""
-		} else {
-			handleControls
-			set prevRow $bufRow
 		}
+		update
 	}
 }
 
