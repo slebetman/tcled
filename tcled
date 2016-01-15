@@ -77,14 +77,14 @@ set syntaxRules {
 	# C and js comments
 	{^(c|cc|cpp|h|hh|js|fe|fec|feh|osm|go|php|java)$|\ynode(js)?\y|\yferite\y} {
 		# Comments:
-		{(?:^|[^\\])//.*$} $COMMENT_FORMAT
+		{(?:^|[^\\])(//.*($))} $COMMENT_FORMAT
 		
 		# Fake /* .. */ style comments:
 		{/\*.*?\*/} $COMMENT_FORMAT
 		# /* ...
 		{/\*.*(?!\*/).*$} $COMMENT_FORMAT
 		# * ...
-		{^\s*\*\s.*$} $COMMENT_FORMAT
+		{^\s*\*(?:\s.*)?$} $COMMENT_FORMAT
 		# ... */
 		{^[^(?!/\*)]*\*/} $COMMENT_FORMAT
 		
@@ -206,7 +206,7 @@ set syntaxRules {
 	# m516 assembly
 	{^as$} {
 		# Comments:
-		{(?:^|[^\\])//.*$} {$fg(green)}
+		{(?:^|[^\\])(//.*($))} $COMMENT_FORMAT
 		
 		# Keywords:
 		{\y(macro|include|define)\y} {$fg(cyan)}
@@ -307,6 +307,11 @@ set syntaxRules {
 		{^(?:\+|>).*$} {$bg(green);$fg(black)}
 		{^(?:\-|<).*$} {$bg(red);$fg(black)}
 		{^(diff.*)} {$bg(blue);$fg(white);$style(bright)}
+	}
+
+	#PHP:
+	{php} {
+		{<\?(?:php|=)|\?>} {$style(bright);$fg(blue)}
 	}
 
 	# HTML:
