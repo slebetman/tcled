@@ -385,7 +385,7 @@ if {$tcl_platform(os) == "Darwin"} {
 		switch $cmd {
 			append {
 				if {![catch {open "| pbcopy" w} f]} {
-					puts $f $arg
+					puts -nonewline $f $arg
 					close $f
 				}
 			}
