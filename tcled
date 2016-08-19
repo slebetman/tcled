@@ -3027,6 +3027,8 @@ proc console_edit {fileName} {
 		set topline [lindex $BUFFER 0]
 		if {[string range $topline 0 1] == "#!"} {
 			set fileext [lindex [split $topline "/"] end]
+		} elseif {[string range $topline 0 4] == "<?php"} {
+			set fileext php
 		} else {
 			set fileext [lindex [split [file tail $filename] "."] end]
 		}
