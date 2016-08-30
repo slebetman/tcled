@@ -65,6 +65,18 @@ set syntaxRules {
 	# The syntax rules is in the form:
 	# {filepattern} {{regexp} {formatting}...}
 	# Comments in here are ignored.
+	
+	# Regexp literal:
+	{\y(perl|ps|pm|awk|js|node)\y} {
+		{/(?:.*?[^\\])/} {$bg(yellow);$fg(black)}
+	}
+	
+	# Syntax elements:
+	{js$|\ynode\y|go$|fe|fec|feh|ferite|osm|java} {
+		{[{}\[\]();,]} {$style(dim)}
+		{[<>^~\-+*!&|:=]} {$style(bright)}
+		{\w\s*(/)\s*\w} {$style(bright)}
+	}
 
 	{^(po|pot)$} {
 		{#:.+$} {$style(underline)}
@@ -140,6 +152,34 @@ set syntaxRules {
 		{\y(iota|true|false|nil)\y} {$NUMBER_STYLE}
 	}
 	
+	# java
+	{java$} {
+		# Keywords:
+		{\y(assert|break|case|catch|continue|default|do|else|enum|finally)\y}
+			{$style(bright);$fg(cyan)}
+		{\y(for|goto|if|instanceof|native|new|return)\y}
+			{$style(bright);$fg(cyan)}
+		{\y(strictfp|super|switch|synchronized|throw|throws|transient|try|while)\y}
+			{$style(bright);$fg(cyan)}
+		
+		# Type system:
+		{\y(true|void|volatile|this|boolean|byte|char|class|const|abstract)\y}
+			{$style(bright);$fg(blue)}
+		{\y(double|extends|false|final|float|implements|int|interface|long)\y}
+			{$style(bright);$fg(blue)}
+		{\y(null|private|protected|public|short|static)\y}
+			{$style(bright);$fg(blue)}
+		
+		# Imports:
+		{\y(import|package)\y} {$style(bright);$fg(green);$bg(blue)}
+		
+		# Annotations:
+		{^\s*@\w+} {$fg(red)}
+		
+		# Constants:
+		{\y[A-Z_]+\y} {$fg(blue)}
+	}
+	
 	# js
 	{js$|\ynode\y} {
 		# Keywords:
@@ -162,12 +202,6 @@ set syntaxRules {
 			
 		# Treat null and undefined like numbers:
 		{\y(null|undefined)\y} {$NUMBER_STYLE}
-	}
-	
-	{js$|\ynode\y|go$|fe|fec|feh|ferite|osm} {
-		# Syntax elements:
-		{[{}\[\]();,]} {$style(dim)}
-		{[<>^~\-+*/!&|:=]} {$style(bright)}
 	}
 	
 	{fe|fec|feh|ferite|osm} {
@@ -295,10 +329,6 @@ set syntaxRules {
 		{(?:s|tr)(/(?:.*?[^\\])??)/(?:.*?[^\\])??/} {$bg(green);$fg(black)}
 		{(?:s|tr)/(?:.*?[^\\])??(/(?:.*?[^\\])??/)} {$bg(white);$fg(black)}
 	}
-	# Regexp literal:
-	{\y(perl|ps|pm|awk|js|node)\y} {
-		{/(?:.*?[^\\])??/} {$bg(yellow);$fg(black)}
-	}
 
 	# Patch file:
 	{patch|diff} {
@@ -342,6 +372,7 @@ set searchpattern ""
 set searchhistory ""
 set debughistory ""
 set exechistory ""
+set evalhistory ""
 set gotohistory ""
 set statusmessage ""
 set modified 0
@@ -1242,8 +1273,55 @@ proc un_ansi {data} {
 	return $txt
 }
 
+proc handleEval {} {
+	global evalhistory filename env IDX keybuffer
+	set ret 0
+				
+	drawStatus [join {
+		"Special exported variables:" 
+		"$f=this file, $s=selected text, $c=clipboard"
+	} " "] 1
+	set commandline [getInput "Eval:" evalhistory]
+	if {$commandline != ""} {
+		historyAppend evalhistory $commandline
+		
+		# Set special variables:
+		set ::f $filename
+		set ::s [getSelectionText]
+		catch {set ::c [clipboard get]}
+		
+		clear
+		goto home
+		hideCursor
+		set result {}
+		if {![catch {uplevel #0 $commandline} result]} {
+			puts $result
+			if {[string trim $result] != ""} {
+				drawStatus "Press ESC to exit this screen" 1
+				keyInput {[C]opy to clipboard or [I]nsert to document?} {
+					c {
+						clipboard clear
+						clipboard append -- [string trimright $result "\n"]
+					}
+					i {
+						set keybuffer [string trimright $result "\n"]
+						set ret 1
+					}
+				}
+			}
+		} else {
+			puts "ERROR:\n\n$result"
+			waitForESC
+		}
+		showCursor
+	}
+	status ""
+	handleRedraw forced
+	return $ret	
+}
+
 proc handleExec {} {
-	global exechistory execShell filename env IDX keybuffer
+	global exechistory filename execShell env IDX keybuffer
 	set ret 0
 				
 	drawStatus [join {
@@ -2207,21 +2285,9 @@ uplevel 1 {
 				set selecting 1; set found 1; break
 			}
 			"\[24~" { ;# F12
-				global debughistory
-				set cmd [getInput "Debug:" debughistory]
-				if {$cmd != ""} {
-					historyAppend debughistory $cmd
-					clear
-					goto home
-					hideCursor
-					puts [uplevel #0 $cmd]
-					flush stdout
-					waitForESC
-					showCursor
-					handleRedraw forced
+				if [handleEval] {
+					return 1
 				}
-				status ""
-				flush stdout
 				set found 1; break
 			}
 			"OQ" { ;# F2
