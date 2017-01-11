@@ -68,7 +68,7 @@ set syntaxRules {
 	
 	# Regexp literal:
 	{\y(perl|ps|pm|awk|js|node)\y} {
-		{/(?:.*?[^\\])/} {$bg(yellow);$fg(black)}
+		{/[^/](?:.*?[^\\])/} {$bg(yellow);$fg(black)}
 	}
 	
 	# Syntax elements:
@@ -498,7 +498,7 @@ proc WINDOW_TITLE {str} {ESC "\]0;" $str "\007"}
 proc regexpSafe {str} {
 	string map {
 		$ {\$} . {\.} * {\*} ^ {\^} ? {\?}
-		( {\(} ) {\)} \{ {\\\{} \} {\\\}}
+		( {\(} ) {\)} \{ \\\{ \} \\\}
 	} $str
 }
 
@@ -564,7 +564,13 @@ proc drawMenu {selections {selected ""}} {
 	set W $IDX(COLMAX)
 	set H [expr {$IDX(ROWMAX)-1}]
 	
-	set w 60
+	if {$W <= 80} {
+		set w 60
+	} elseif {$W <= 100} {
+		set w 80
+	} else {
+		set w 100
+	}
 	set h [expr {[llength $selections]+2}]
 	
 	if {$w > $W} {set w $W}
@@ -1421,18 +1427,11 @@ proc handleSearch {} {
 				incr bufRow
 			}
 			if {$found != -1} {
-				set rowDiff [expr {$bufRow-$startRow}]
-				incr viewRow $rowDiff
-				if {$viewRow < 0 || $viewRow > $IDX(ROWMAX)} {
-					set viewRow 5
-				}
-
+				fixViewRow $startRow
+				
 				set C [regexp -indices -inline -- $pattern \
 					[lindex $BUFFER $bufRow]]
 				set bufCol [lindex [lindex $C 0] 0]
-				if {$bufRow < $viewRow} {
-					set viewRow 0
-				}
 			} else {
 				status "Search: $searchpattern (not found!)"
 			}
@@ -1554,7 +1553,12 @@ proc fixViewRow {oldBufRow} {
 	if {abs($::bufRow-$oldBufRow) < $::IDX(ROWMAX)} {
 		incr ::viewRow [expr {$::bufRow-$oldBufRow}]
 	} else {
-		set ::viewRow [expr {$::IDX(ROWMAX)/2}]
+		set HALFROWMAX [expr {$::IDX(ROWMAX)/2}]
+		if {$::bufRow > $HALFROWMAX} {
+			set ::viewRow $HALFROWMAX
+		} else {
+			set ::viewRow [expr {$::bufRow + 1}]
+		}
 	}
 }
 
@@ -1752,17 +1756,17 @@ proc goToDef {} {
 	set tag [currentWord string]
 
 	if [info exists tags($tag)] {
-		if {[llength $tags($tag)] > 2} {
+		if {[llength $tags($tag)] > 3} {
 			set selection {}
-			foreach {sourceFile searchSpec} $tags($tag) {
+			foreach {sourceFile searchSpec kind} $tags($tag) {
 				set searchSpec [string trim $searchSpec {\";/ \t^$}]
 				if {$searchSpec != ""} {
-					lappend selection "$sourceFile: $searchSpec"
+					lappend selection "([string toupper $kind]) [file tail $sourceFile]: $searchSpec"
 				}
 			}
 			set ss [selectMenu $selection 0]
 			if {$ss >= 0} {
-				set ss [expr {$ss*2}]
+				set ss [expr {$ss*3}]
 				set defFile [lindex $tags($tag) $ss]
 				set searchSpec [lindex $tags($tag) [expr $ss+1]]
 			} else {
@@ -1780,10 +1784,10 @@ proc goToDef {} {
 		set myself "$redir {[info nameofexecutable]} {[info script]}"
 		set command ""
 
-		if [regexp {^(\d+);\"$} $searchSpec - lineNumber] {
+		if [regexp {^(\d+)$} $searchSpec - lineNumber] {
 			set command [list -G $lineNumber]
 		}
-		if [regexp {^/\^(.+)\$/;\"$} $searchSpec - literal] {
+		if [regexp {^/\^(.+)\$/$} $searchSpec - literal] {
 			set command [list -F "(?c)^[regexpSafe $literal]\$"]
 		}
 
@@ -3054,13 +3058,13 @@ proc loadTags {fileName} {
 
 			foreach line [split $txt \n] {
 				if {![regexp {^!_TAG_} $line]} {
-					lassign [split $line \t] tagName tagLocation searchSpec
-
-					if {$tagName != "" && $searchSpec != ""} {
-						if {![info exists tags($tagName)]} {
-							set tags($tagName) [list $tagLocation $searchSpec]
-						} else {
-							lappend tags($tagName) $tagLocation $searchSpec
+					if {[regexp {([^\t]+)\t([^\t]+)\t(/\^.*\$/|\d+)[^\t]*\t([a-zA-Z])} $line -> tagName tagLocation searchSpec kind]} {
+						if {$tagName != "" && $searchSpec != ""} {
+							if {![info exists tags($tagName)]} {
+								set tags($tagName) [list $tagLocation $searchSpec $kind]
+							} else {
+								lappend tags($tagName) $tagLocation $searchSpec $kind
+							}
 						}
 					}
 				}
