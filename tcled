@@ -348,7 +348,7 @@ set syntaxRules {
 	{htm|xml|svg|php} {
 		{<!DOCTYPE.*?>} {$bg(blue);$fg(yellow)}
 		{<!-.*?->} $COMMENT_FORMAT
-		{<\w+|>|</\w+>} {$style(bright);$fg(cyan)}
+		{<[\w\-]+|>|</[\w\-]+>} {$style(bright);$fg(cyan)}
 	}
 
 	{^asn$} {
