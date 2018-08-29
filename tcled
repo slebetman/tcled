@@ -206,7 +206,7 @@ set syntaxRules {
 			{$style(bright);$fg(cyan)}
 		{\y(function|if|in|instanceof|new|return|switch|this|throw|try)\y}
 			{$style(bright);$fg(cyan)}
-		{\y(typeof|var|void|while|with)\y}
+		{\y(typeof|var|void|while|with|async|await)\y}
 			{$style(bright);$fg(cyan)}
 		
 		# Reserved words:
@@ -218,6 +218,9 @@ set syntaxRules {
 			{$fg(red)}
 		{\y(super|synchronized|throws|transient|volatile)\y}
 			{$fg(red)}
+		
+		# Template strings
+		{`.*?`} {$STRING_STYLE}
 			
 		# Treat null and undefined like numbers:
 		{\y(null|undefined)\y} {$NUMBER_STYLE}
@@ -364,7 +367,7 @@ set syntaxRules {
 	}
 
 	# HTML:
-	{htm|xml|svg|php} {
+	{htm|xml|svg|php|hbs} {
 		{<!DOCTYPE.*?>} {$bg(blue);$fg(yellow)}
 		{<!-.*?->} $COMMENT_FORMAT
 		{<[\w\-]+|>|</[\w\-]+>} {$style(bright);$fg(cyan)}
