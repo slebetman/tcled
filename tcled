@@ -85,6 +85,25 @@ set syntaxRules {
 		$STRINGS {}
 		$NUMBERS {}
 	}
+	
+	{^cp39} {
+		{^[HD]} {$style(reverse)}
+		{^H(.{10})} {$fg(blue)}
+		{^H.{10}(.{10})} {$style(reverse)}
+		{^H.{10}.{10}(.{4})} {$fg(red)}
+		{^H.{10}.{10}.{4}(.{2})} {$style(reverse)}
+		{^H.{10}.{10}.{4}.{2}.{8}(.{2})} {$bg(yellow)}
+		{^H.{10}.{10}.{4}.{2}.{10}(.{5})} {$style(reverse)}
+		{^H.{10}.{10}.{4}.{2}.{10}.{5}.{8}(.{2})} {$bg(yellow)}
+		{^H.{10}.{10}.{4}.{2}.{10}.{5}.{10}(.{5})} {$style(reverse)}
+		{^D.{10}(.)} {$style(reverse)}
+		{^D.{11}.{60}(.{12})} {$style(reverse)}
+		{^D.{11}.{60}.{12}.{12}(.{12})} {$style(reverse)}
+		{^D.{11}.{60}.{12}.{12}.{12}.{2}(.{6})} {$style(reverse)}
+		{^D.{11}.{60}.{12}.{12}.{12}.{2}.{6}(.{2})} {$bg(yellow)}
+		{^D.{11}.{60}.{12}.{12}.{12}.{2}.{8}.{6}(.{2})} {$bg(yellow)}
+		{^D.{11}.{60}.{12}.{12}.{12}.{2}.{8}.{8}(.{10})} {$style(reverse)}
+	}
 
 	# C and js comments
 	{^(c|cc|cpp|h|hh|js|fe|fec|feh|osm|go|php|java)$|\ynode(js)?\y|\yferite\y} {
