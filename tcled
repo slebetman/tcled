@@ -372,6 +372,13 @@ set syntaxRules {
 		{<!-.*?->} $COMMENT_FORMAT
 		{<[\w\-]+|>|</[\w\-]+>} {$style(bright);$fg(cyan)}
 	}
+	
+	# HTML Content:
+	{white} {
+		{<!DOCTYPE.*?>} {$bg(blue);$fg(yellow)}
+		{<!-.*?->} $COMMENT_FORMAT
+		{<[^>]+>} {$bg(white);$fg(white)}
+	}
 
 	{^asn$} {
 	  {^\s*--.*$} $COMMENT_FORMAT
