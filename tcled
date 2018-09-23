@@ -29,6 +29,7 @@ if {[fconfigure stdout -encoding] == "utf-8"} {
 	# Tab guide character for utf8 capable terminals
 	# set tabGuideChar \u2502
 	set tabGuideChar \u2591
+	# set tabGuideChar \u250b
 } else {
 	# Tab guide character for plain ASCII terminals
 	set tabGuideChar |
@@ -2332,10 +2333,47 @@ uplevel 1 {
 				set found 1; break
 			}
 		}
-		if [regexp {\[(\d+);(\d+);(\d+)M} $seq -> cmd x y] {
-			# Mouse events:
+		
+		# Handle mouse events:
+		
+		set NORM_MOUSE_PROTOCOL {\[(\d+);(\d+);(\d+)M}
+		set XTRM_MOUSE_PROTOCOL {\[M(.)(.)(.)}
+		if {
+			[regexp $NORM_MOUSE_PROTOCOL $seq -> cmd x y] ||
+			[regexp $XTRM_MOUSE_PROTOCOL $seq -> xcmd x y]
+		} {
 			global bufRow bufCol viewRow IDX bufSelection
 			global mousewheelSpeed mouseMoved clickCount
+			
+			if [info exists xcmd] {
+				binary scan $x c x
+				binary scan $y c y
+				set x [expr $x-32]
+				set y [expr $y-32]
+			
+				# convert cmd from xterm to normal mode
+				switch $xcmd {
+					"a" { ;# mousewheel down
+						set cmd 97
+						set x 1
+						set y 1
+					}
+					"`" { ;# mousewheel up
+						set cmd 96
+						set x 1
+						set y 1
+					}
+					" " {
+						set cmd 32
+					}
+					"#" {
+						set cmd 35
+					}
+					"@" {
+						set cmd 64
+					}
+				}
+			}
 			
 			set mouseRow [expr {$y+$bufRow-$viewRow}]
 			set mouseCol [colFromViewCol $mouseRow [expr {$x-1}]]
@@ -2345,68 +2383,70 @@ uplevel 1 {
 				set mouseRow $bufLen
 			}
 			
-			switch $cmd {
-				97 { ;# mousewheel down
-					if {$bufRow < ([llength $BUFFER] + $viewRow - $IDX(ROWMAX))} {
-						incr viewRow -$mousewheelSpeed
-					}
-					for {set x 0} {$x < $mousewheelSpeed} {incr x} cursorDown
-					handleRedraw
-					set found 1; break
-				}
-				96 { ;# mousewheel up
-					if {$bufRow > $viewRow} {
-						incr viewRow $mousewheelSpeed
-					}
-					for {set x 0} {$x < $mousewheelSpeed} {incr x} cursorUp
-					handleRedraw
-					set found 1; break
-				}
-				32 { ;# mouse selection start
-					set bufSelection [
-						list $mouseRow $mouseCol $mouseRow $mouseCol
-					]
-					set mouseMoved 0
-					set selecting 1;set found 1; break
-				}
-				35 { ;# mouse selection end
-					set viewRow $y
-					set bufRow $mouseRow
-					set bufCol $mouseCol
-					
-					if {!$mouseMoved} { ;# then don't select anything
-						incr clickCount
-						set selecting 0
-						set bufSelection {}
-						
-						if {$clickCount == 2} { ;# double click!
-							# Note: clickCount is reset
-							# every second in edittext
-							
-							set bufSelection [list \
-								$bufRow [currentWord start] \
-								$bufRow [currentWord end]
-							]
-							status $bufSelection
-							flush stdout
-							set selecting 1
+			if [info exists cmd] {
+				switch $cmd {
+					97 { ;# mousewheel down
+						if {$bufRow < ([llength $BUFFER] + $viewRow - $IDX(ROWMAX))} {
+							incr viewRow -$mousewheelSpeed
 						}
+						for {set x 0} {$x < $mousewheelSpeed} {incr x} cursorDown
+						handleRedraw
+						set found 1; break
+					}
+					96 { ;# mousewheel up
+						if {$bufRow > $viewRow} {
+							incr viewRow $mousewheelSpeed
+						}
+						for {set x 0} {$x < $mousewheelSpeed} {incr x} cursorUp
+						handleRedraw
+						set found 1; break
+					}
+					32 { ;# mouse selection start
+						set bufSelection [
+							list $mouseRow $mouseCol $mouseRow $mouseCol
+						]
+						set mouseMoved 0
+						set selecting 1;set found 1; break
+					}
+					35 { ;# mouse selection end
+						set viewRow $y
+						set bufRow $mouseRow
+						set bufCol $mouseCol
 						
-						handleRedraw forced
-					} else {
-						set selecting 1
+						if {!$mouseMoved} { ;# then don't select anything
+							incr clickCount
+							set selecting 0
+							set bufSelection {}
+							
+							if {$clickCount == 2} { ;# double click!
+								# Note: clickCount is reset
+								# every second in edittext
+								
+								set bufSelection [list \
+									$bufRow [currentWord start] \
+									$bufRow [currentWord end]
+								]
+								status $bufSelection
+								flush stdout
+								set selecting 1
+							}
+							
+							handleRedraw forced
+						} else {
+							set selecting 1
+							lset bufSelection 2 $mouseRow
+							lset bufSelection 3 $mouseCol
+							handleRedraw forced
+						}
+						set found 1; break
+					}
+					64 { ;# mouse selection move
 						lset bufSelection 2 $mouseRow
 						lset bufSelection 3 $mouseCol
+						set mouseMoved 1
 						handleRedraw forced
+						set selecting 1;set found 1; break
 					}
-					set found 1; break
-				}
-				64 { ;# mouse selection move
-					lset bufSelection 2 $mouseRow
-					lset bufSelection 3 $mouseCol
-					set mouseMoved 1
-					handleRedraw forced
-					set selecting 1;set found 1; break
 				}
 			}
 		}
