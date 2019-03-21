@@ -2943,7 +2943,7 @@ proc edittext {} {
 		eval $cmd
 	}
 
-	while {$char != "\u0011"} {
+	while {$char != "\u0011"} { ;# ctrl-q
 		waitForKey
 		if [eof stdin] {return done}
 		while {$keybuffer != ""} {
