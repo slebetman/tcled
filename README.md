@@ -54,6 +54,7 @@ Features:
   of the shell command can then either be inserted directly into the document
   or copied to the clipboard. With this feature Unix is your IDE (as it was
   always meant to be)!
+- Supports per-project config file.
 
 Usage:
 ------
@@ -180,9 +181,8 @@ If the file `.tcled.conf` exists in the current directory or in any parent
 directories then it will be read as a config file. This mechanism means that
 you can have different configurations for different projects.
 
-The syntax of the config file is simply a list of `variable` and `value` on
-each line. Empty lines are ignored. Unfortunately comments are not supported
-at the moment.
+The syntax of the config file is simply a list of `setting` and `value` on
+each line. Empty lines are ignored.
 
 The following settings are available:
 
@@ -191,9 +191,10 @@ The following settings are available:
 - `usetabs` - Use tabs or spaces. Default is `true` which means use tabs instead of spaces.
 - `searchcase` - Is search case sensitive? Defaults to `false`.
 - `tabGuide` - Turn on tab guide on or off. Defaults to `false` which turns it off.
+- `filealias` - Maps a file extension to another for the purposes of syntax highlighting. This setting takes two arguments instead of one. You can specify multiple `filealias` in a config file.
 
 Example config file:
 
     usetabs false
 	tabstop 8
-
+	filealias ts js

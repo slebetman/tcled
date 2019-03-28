@@ -34,6 +34,7 @@ if {[fconfigure stdout -encoding] == "utf-8"} {
 	# Tab guide character for plain ASCII terminals
 	set tabGuideChar |
 }
+set filealias {}
 
 ################################
 # Syntax hilighting:
@@ -3103,10 +3104,22 @@ proc loadConfig {fileName} {
 			set f [open $dir/.tcled.conf]
 			set txt [read $f]
 			close $f
+			
+			set SINGLE_ARG_CONFIG {^\s*(\w+)\s+(\w+)\s*$}
+			set TWO_ARG_CONFIG {^\s*(\w+)\s+(\w+)\s+(\w+)\s*$}
 
 			foreach line [split $txt \n] {
-				if {[regexp {(\w+)\s+(\w+)} $line -> var val]} {
+				if {[regexp $SINGLE_ARG_CONFIG $line -> var val]} {
+				
 					uplevel #0 "set $var $val"
+					
+				} elseif {[regexp $TWO_ARG_CONFIG  $line -> cmd val1 val2]} {
+				
+					switch -- $cmd {
+						filealias {
+							lappend ::filealias [list $val1 $val2]
+						}
+					}
 				}
 			}
 
@@ -3174,6 +3187,15 @@ proc console_edit {fileName} {
 			set fileext [lindex [split [file tail $filename] "."] end]
 		}
 	}
+	
+	foreach a $::filealias {
+		lassign $a pretender pretense
+		if {$pretender == $fileext} {
+			set fileext $pretense
+			break
+		}
+	}
+	
 	initSyntaxRules $fileext
 
 	trace variable BUFFER w bufferModified
