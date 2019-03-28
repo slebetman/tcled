@@ -182,7 +182,8 @@ directories then it will be read as a config file. This mechanism means that
 you can have different configurations for different projects.
 
 The syntax of the config file is simply a list of `setting` and `value` on
-each line. Empty lines are ignored.
+each line. Everything after a `#` symbol to the end of each line are considered
+comments and will be ignored. Empty lines are ignored.
 
 The following settings are available:
 
@@ -195,6 +196,9 @@ The following settings are available:
 
 Example config file:
 
+    # Management mandates 8 spaces:
     usetabs false
 	tabstop 8
-	filealias ts js
+	
+	filealias ts js # use js syntax for typescript
+

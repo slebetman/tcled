@@ -3109,6 +3109,8 @@ proc loadConfig {fileName} {
 			set TWO_ARG_CONFIG {^\s*(\w+)\s+(\w+)\s+(\w+)\s*$}
 
 			foreach line [split $txt \n] {
+				set line [regsub {#.*$} $line {}] ;# strip comments
+				
 				if {[regexp $SINGLE_ARG_CONFIG $line -> var val]} {
 				
 					uplevel #0 "set $var $val"
