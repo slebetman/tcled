@@ -2271,12 +2271,14 @@ uplevel 1 {
 			}
 			">" -
 			"\[1;6B" -
+			"\[1;10C" -
 			"\[1;5B" { ;# ^-down arrow or alt-> (alt-shift-. depending on keyboard)
 				goToDef
 				set found 1; break
 			}
 			"<" -
 			"\[1;6A" -
+			"\[1;10D" -
 			"\[1;5A" { ;# ^-up arrow or alt-< (alt-shift-, depending on keyboard)
 			            # Return from Def
 			            # This is basically the same as quit but
@@ -3146,6 +3148,7 @@ proc loadTags {fileName} {
 				if {![regexp {^!_TAG_} $line]} {
 					if {[regexp {([^\t]+)\t([^\t]+)\t(/\^.*\$/|\d+)[^\t]*\t([a-zA-Z])} $line -> tagName tagLocation searchSpec kind]} {
 						if {$tagName != "" && $searchSpec != ""} {
+							set tagName [lindex [split $tagName .] end]
 							if {![info exists tags($tagName)]} {
 								set tags($tagName) [list $tagLocation $searchSpec $kind]
 							} else {
