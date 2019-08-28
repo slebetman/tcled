@@ -204,28 +204,22 @@ set syntaxRules {
 	# js
 	{js$|\ynode\y} {
 		# Keywords:
-		{\y(break|case|catch|continue|default|delete|do|else|finally|for)\y}
+		{\y(async|await|break|case|catch|class|const|continue|debugger|default|delete)\y}
 			{$style(bright);$fg(cyan)}
-		{\y(function|if|in|instanceof|new|return|switch|this|throw|try)\y}
+		{\y(do|else|export|extends|finally|for|function|if|import|in|instanceof|let)\y}
 			{$style(bright);$fg(cyan)}
-		{\y(typeof|var|void|while|with|async|await)\y}
+		{\y(new|of|return|super|switch|this|throw|try|typeof|var|void|while|with|yield)\y}
 			{$style(bright);$fg(cyan)}
 		
 		# Reserved words:
-		{\y(abstract|boolean|byte|char|class|const|debugger|double|enum)\y}
-			{$fg(red)}
-		{\y(export|extends|final|float|goto|implements|import|int|long)\y}
-			{$fg(red)}
-		{\y(interface|native|package|private|protected|public|short|static)\y}
-			{$fg(red)}
-		{\y(super|synchronized|throws|transient|volatile)\y}
+		{\y(enum|implements|interface|package|private|protected|public|static)\y}
 			{$fg(red)}
 		
 		# Template strings
 		{`.*?`} {$STRING_STYLE}
 			
 		# Treat null and undefined like numbers:
-		{\y(null|undefined)\y} {$NUMBER_STYLE}
+		{\y(null|undefined|true|false)\y} {$NUMBER_STYLE}
 	}
 	
 	{fe|fec|feh|ferite|osm} {
