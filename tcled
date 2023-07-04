@@ -69,12 +69,12 @@ set syntaxRules {
 	# Comments in here are ignored.
 	
 	# Regexp literal:
-	{\y(perl|ps|pm|awk|js|node)\y} {
+	{\y(perl|ps|pm|awk|jsx?|tsx?|node)\y} {
 		{/[^/](?:.*?[^\\])/} {$bg(yellow);$fg(black)}
 	}
 	
 	# Syntax elements:
-	{js$|\ynode\y|go$|fe|fec|feh|ferite|osm|java} {
+	{tsx?$|jsx?$|\ynode\y|go$|fe|fec|feh|ferite|osm|java} {
 		{[{}\[\]();,]} {$style(dim)}
 		{[<>^~\-+*!&|:=]} {$style(bright)}
 		{\w\s*(/)\s*\w} {$style(bright)}
@@ -108,7 +108,7 @@ set syntaxRules {
 	}
 
 	# C and js comments
-	{^(c|cc|cpp|h|hh|js|fe|fec|feh|osm|go|php|java)$|\ynode(js)?\y|\yferite\y} {
+	{^(c|cc|cpp|h|hh|js|ts|fe|fec|feh|osm|go|php|java)$|\ynode(js)?\y|\yferite\y} {
 		# Comments:
 		{(?:^|[^\\])(//.*($))} $COMMENT_FORMAT
 		
@@ -202,7 +202,7 @@ set syntaxRules {
 	}
 	
 	# js
-	{js$|\ynode\y} {
+	{jsx?$|tsx?$|\ynode\y} {
 		# Keywords:
 		{\y(async|await|break|case|catch|class|const|continue|debugger|default|delete)\y}
 			{$style(bright);$fg(cyan)}
@@ -383,7 +383,7 @@ set syntaxRules {
 }
 
 set blockCommentRules {
-	{^(c|cc|cpp|h|hh|js|fe|fec|feh|osm|go|php|java)$|\ynode(js)?\y|\yferite\y} "//"
+	{^(c|cc|cpp|h|hh|js|ts|fe|fec|feh|osm|go|php|java)$|\ynode(js)?\y|\yferite\y} "//"
 	{^(asn|sql)$} "--"
 	{} "#"
 }
@@ -3159,8 +3159,10 @@ proc loadTags {fileName} {
 	}
 }
 
+set ORIG_TTY_SETTINGS ""
+
 proc console_edit {fileName} {
-	global BUFFER IDX tabstop bufRow bufCol writable
+	global BUFFER IDX tabstop bufRow bufCol writable ORIG_TTY_SETTINGS
 	global filename fileext comeFrom
 
 	set IDX(ROWMAX) 24
@@ -3203,6 +3205,7 @@ proc console_edit {fileName} {
 	fconfigure stdout -buffering full -translation crlf
 
 	if {[catch {
+		set ORIG_TTY_SETTINGS [exec stty -g]
 		exec stty raw -echo
 	
 		# Set window title:
@@ -3224,12 +3227,14 @@ proc console_edit {fileName} {
 }
 
 proc doExit {{err ""}} {
+	global ORIG_TTY_SETTINGS
+
 	# Reset terminal:
 	puts -nonewline [ESC c [ESC_ 2J]]
 	# Disable mouse reporting:
 	puts -nonewline [ESC_ ?1002l][ESC_ ?1015l]
 	flush stdout
-	catch {exec stty -raw echo}
+	catch {exec stty $ORIG_TTY_SETTINGS}
 	after 100
 	
 	if {$err != ""} {
