@@ -261,7 +261,7 @@ set syntaxRules {
 		{(?:^|[^\\])(//.*($))} $COMMENT_FORMAT
 		
 		# Keywords:
-		{\y(macro|include|define)\y} {$fg(cyan)}
+		{\y(macro|include|define|string|bytestring)\y} {$fg(cyan)}
 		
 		# Macro variables
 		{(?i)\$[\w\:\$]*} {$style(bright);$fg(cyan)}
